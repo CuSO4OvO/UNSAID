@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UNSAID — An East Asian Family Simulator</title>
+<style>
+:root{
+  --bg:#14100d; --bg2:#1e1712;
+  --ink:#f0e6d8; --dim:#9c8b78; --faint:#5d5145;
+  --amber:#d9a441; --amber2:#f0c674;
+  --cold:#6fa8dc; --cold2:#9ecbf0;
+  --red:#c9553d; --green:#7fa860;
+  --line:rgba(217,164,65,.16);
+  --serif:Georgia,"Songti SC","Noto Serif SC","Source Han Serif SC",serif;
+  --sans:"Inter","Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.app{position:relative;height:100vh;width:100vw;overflow:hidden}
+
+/* ---- table backdrop ---- */
+.table{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.table::before{
+  content:"";position:absolute;left:50%;top:58%;width:150vmax;height:150vmax;
+  transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 50% 45%,#4a3625 0%,#33251a 32%,#1d1510 62%,#14100d 100%);
+}
+.table::after{
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(circle at 22% 20%,rgba(255,190,110,.10),transparent 34%),
+    radial-gradient(circle at 78% 78%,rgba(255,150,80,.05),transparent 40%),
+    radial-gradient(circle at 50% 50%,transparent 42%,rgba(0,0,0,.72) 100%);
+}
+.plate{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);width:150vmax;height:150vmax;opacity:.5}
+.plate circle,.plate ellipse{fill:none;stroke:rgba(255,215,160,.07);stroke-width:1.2}
+
+/* ---- layout ---- */
+.wrap{position:relative;height:100%;display:flex;flex-direction:column}
+.topbar{
+  position:relative;z-index:30;   /* must sit ABOVE #overlay, or its buttons are unclickable */
+  display:flex;align-items:center;gap:18px;padding:10px 20px;
+  border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);flex:0 0 auto;flex-wrap:wrap;
+}
+.logo{font-family:var(--serif);font-size:15px;letter-spacing:.32em;color:var(--amber);text-transform:none}
+.logo b{font-weight:400}
+.topbar .sp{flex:1}
+.key{
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  border:1px solid var(--line);border-radius:3px;padding:5px 9px;transition:.15s;
+}
+.key:hover{border-color:var(--amber);color:var(--amber2)}
+.key i{font-style:normal;color:var(--amber);font-weight:600}
+.key.on{background:rgba(217,164,65,.12);border-color:var(--amber);color:var(--amber2)}
+.body{flex:1;display:flex;min-height:0}
+
+/* ---- sidebar ---- */
+.side{
+  width:250px;flex:0 0 250px;border-right:1px solid var(--line);
+  padding:16px 14px;overflow-y:auto;font-size:12px;
+}
+.side::-webkit-scrollbar{width:5px}
+.side::-webkit-scrollbar-thumb{background:var(--faint);border-radius:9px}
+.sec{margin-bottom:20px}
+.sec h4{
+  font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);
+  font-weight:600;margin-bottom:9px;
+}
+.meter{margin-bottom:11px}
+.meter .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.meter .nm{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+.meter .st{font-size:10px;color:var(--dim);letter-spacing:.04em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.meter .st .num{color:var(--ink);font-weight:600}
+.meter .st .mx{color:var(--dim)}
+.meter .st em{font-style:normal;color:var(--faint)}
+.meter.danger .st .num{color:var(--red)}
+.meter.danger .st em{color:var(--red)}
+.pips{display:flex;gap:3px}
+.pips i{height:5px;flex:1;background:rgba(255,255,255,.07);border-radius:1px;transition:.3s}
+.meter[data-k=face]   .pips i.on{background:var(--amber)}
+.meter[data-k=filial] .pips i.on{background:#c9a86a}
+.meter[data-k=self]   .pips i.on{background:var(--green)}
+.meter[data-k=stress] .pips i.on{background:var(--red)}
+.meter[data-k=unsaid] .pips i.on{background:var(--cold)}
+.meter.danger .nm{color:var(--red)}
+.meter.danger .pips i.on{background:var(--red);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.45}}
+.meter.flash .pips{filter:brightness(2.4)}
+.led{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;color:var(--dim)}
+.led b{font-weight:500;color:var(--ink)}
+.led .g{color:var(--amber2)}
+.led .o{color:var(--red)}
+.led .gap{color:var(--faint);font-size:10px}
+.web{display:flex;flex-direction:column;gap:5px}
+.wn{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim)}
+.wn .nm2{flex:0 0 72px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wn .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:0 0 auto}
+.wn .dot.k{background:var(--cold);box-shadow:0 0 7px var(--cold)}
+.wn .dot.hi{background:var(--amber)}
+.wn .bar{flex:1;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.wn .bar i{display:block;height:100%;background:var(--amber);transition:.4s}
+.wn .cl{font-size:9px;color:var(--faint);letter-spacing:.08em}
+.keeps{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--dim)}
+.keeps div{opacity:.85}
+
+/* ---- main ---- */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;padding:18px 34px 16px;overflow-y:auto}
+.main::-webkit-scrollbar{width:6px}
+.main::-webkit-scrollbar-thumb{background:var(--faint);border-radius:9px}
+.scene{max-width:820px;margin:0 auto;width:100%}
+/* The speaker used to be 10px amber text — too quiet to answer "who is talking?"
+   at a glance. It is now a chip, which also gives narration its own muted look. */
+.spk{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.spk .who{
+  font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;
+  color:var(--amber2);background:rgba(217,164,65,.14);
+  border:1px solid rgba(217,164,65,.34);border-radius:3px;
+  padding:3px 11px;white-space:nowrap;
+}
+.spk .who.narr{color:var(--dim);background:rgba(255,255,255,.05);border-color:var(--line)}
+.spk::after{content:"";flex:1;height:1px;background:var(--line)}
+.line{
+  font-family:var(--serif);font-size:clamp(19px,2.3vw,28px);line-height:1.5;
+  margin-bottom:9px;letter-spacing:.01em;
+}
+.line.zh{font-family:var(--serif);letter-spacing:.06em}
+.sub{
+  font-size:13px;color:var(--dim);font-style:italic;letter-spacing:.02em;
+  margin-bottom:6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+}
+.sub .en{font-style:normal;color:var(--cold2)}
+.sub .conf{
+  font-size:10px;letter-spacing:.1em;border:1px solid var(--line);
+  border-radius:2px;padding:2px 6px;color:var(--faint);font-style:normal;
+}
+.sub .conf.low{border-color:var(--red);color:var(--red)}
+.narr{font-size:15px;color:var(--dim);line-height:1.8;margin-bottom:14px;max-width:640px}
+.divider{height:1px;background:var(--line);margin:15px 0 13px}
+.qh{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{
+  display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;
+  border:1px solid var(--line);border-radius:4px;padding:10px 13px;
+  background:rgba(255,255,255,.012);transition:.13s;position:relative;
+}
+.opt:hover{border-color:var(--amber);background:rgba(217,164,65,.07);transform:translateX(3px)}
+.opt .k{
+  font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--amber);
+  border:1px solid var(--line);border-radius:3px;padding:2px 6px;flex:0 0 auto;margin-top:2px;
+}
+.opt .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.opt .v{
+  font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+  display:block;
+}
+.opt .l{font-size:15px;line-height:1.5;font-family:var(--serif);display:block}
+.opt .fx{
+  display:block;font-size:10.5px;letter-spacing:.09em;color:var(--faint);
+  white-space:normal;line-height:1.5;
+}
+.opt .fx .dice{color:var(--cold2);font-weight:600}
+.opt .fx .failmark{color:var(--red);opacity:.75}
+.opt .fx b{font-weight:600}
+.opt.special{border-color:rgba(111,168,220,.4);background:rgba(111,168,220,.07)}
+.opt.special .k{color:var(--cold2);border-color:rgba(111,168,220,.4)}
+.opt.special:hover{background:rgba(111,168,220,.14);border-color:var(--cold)}
+.opt:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.inner{
+  margin-top:12px;border-left:2px solid rgba(111,168,220,.35);padding:8px 0 8px 14px;
+}
+.inner .t{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.inner .x{font-family:var(--serif);font-size:16px;color:var(--cold2);line-height:1.55}
+.inner .sp{font-size:10px;color:var(--faint);margin-top:7px;letter-spacing:.06em}
+.inner .hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.plus{
+  font-size:9.5px;letter-spacing:.14em;color:var(--cold);
+  border:1px solid rgba(111,168,220,.4);border-radius:2px;padding:2px 6px;
+  white-space:nowrap;flex:0 0 auto;
+}
+.notices{margin:0 0 15px;border-left:2px solid rgba(217,164,65,.5);padding:7px 0 7px 13px}
+.notices div{font-size:12.5px;color:var(--amber2);line-height:1.7}
+.notices div.bad{color:var(--red)}
+.votewrap{margin-top:16px;border-top:1px solid var(--line);padding-top:11px}
+.votewrap .vh{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
+.vrow{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--dim);margin-bottom:5px}
+.vrow .vl{width:16px;font-weight:700;color:var(--amber)}
+.vrow .vb{flex:1;height:14px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.vrow .vb i{display:block;height:100%;background:var(--amber);width:0;transition:.25s}
+.vrow .vc{width:34px;text-align:right;color:var(--amber2);font-variant-numeric:tabular-nums}
+.vrow.win .vl{color:var(--cold2)}
+.vrow.win .vb i{background:var(--cold)}
+.flash{animation:fl .7s}
+@keyframes fl{0%{opacity:0;transform:translateY(9px)}100%{opacity:1;transform:none}}
+
+/* ---- overlay ---- */
+/* keyed on BOTH the class and the id: the JS finds this by id, so an id rule
+   means a missing class attribute can never again take the whole game off-screen */
+/* align-items:flex-start + margin:auto on the child is the fix for the classic
+   "flex centring clips the top when the content is taller than the viewport"
+   bug — the Archive page was losing its heading that way. */
+.ov,#overlay{
+  position:absolute;inset:0;z-index:20;display:flex;align-items:flex-start;justify-content:center;
+  background:rgba(8,6,4,.985);padding:30px;overflow-y:auto;
+}
+.card{max-width:660px;width:100%;text-align:center;padding:20px 0;margin:auto}
+.card h1{
+  font-family:var(--serif);font-size:clamp(38px,7vw,68px);letter-spacing:.34em;
+  font-weight:400;color:var(--amber2);margin-bottom:10px;text-indent:.34em;
+}
+.card h2{font-family:var(--serif);font-size:13px;letter-spacing:.34em;text-transform:uppercase;color:var(--dim);font-weight:400;margin-bottom:28px}
+.tag{font-family:var(--serif);font-size:15px;color:var(--dim);line-height:1.85;margin-bottom:34px;font-style:italic}
+.menu{display:flex;flex-direction:column;gap:10px;align-items:center;margin-bottom:30px}
+.mi{
+  border:1px solid var(--line);border-radius:4px;padding:11px 30px;font-size:12px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--dim);transition:.15s;min-width:270px;
+}
+.mi:hover{border-color:var(--amber);color:var(--amber2);background:rgba(217,164,65,.08)}
+.mi.primary{border-color:var(--amber);color:var(--amber2)}
+.auth{font-size:11px;letter-spacing:.2em;color:var(--faint);margin-top:8px}
+.auth b{color:var(--amber);font-weight:500}
+.hint{font-size:10px;letter-spacing:.1em;color:var(--faint);line-height:2;margin-top:18px}
+.hint kbd{border:1px solid var(--line);border-radius:2px;padding:1px 5px;color:var(--dim);font-family:inherit;font-size:10px}
+.end-t{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+.end-n{font-family:var(--serif);font-size:clamp(26px,4.6vw,44px);color:var(--amber2);letter-spacing:.1em;margin-bottom:6px}
+.end-z{font-family:var(--serif);font-size:15px;color:var(--dim);letter-spacing:.3em;margin-bottom:26px}
+.end-txt{font-family:var(--serif);font-size:clamp(16px,2.1vw,21px);line-height:1.85;color:var(--ink);margin-bottom:14px}
+.end-sub{font-size:13px;color:var(--cold2);font-style:italic;margin-bottom:6px}
+.stats{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin:26px 0;font-size:11px;color:var(--faint);letter-spacing:.1em}
+.stats b{color:var(--dim);font-weight:500}
+.unlocked{border-top:1px solid var(--line);padding-top:16px;margin-top:16px;font-size:12px;color:var(--dim)}
+.unlocked b{color:var(--amber2);font-weight:500}
+.arch{max-width:820px;width:100%;text-align:left}
+.arch h3{font-family:var(--serif);font-size:22px;color:var(--amber2);letter-spacing:.2em;margin-bottom:20px;font-weight:400}
+.ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:10px;margin-bottom:24px}
+.ac{border:1px solid var(--line);border-radius:4px;padding:11px 13px;font-size:12px}
+.ac.locked{opacity:.3}
+.ac .n{color:var(--amber2);margin-bottom:4px;font-family:var(--serif);font-size:14px}
+.ac .d{color:var(--faint);font-size:10.5px;line-height:1.6}
+.big .line{font-size:clamp(26px,3.4vw,40px)}
+.big .opt .l{font-size:19px}
+.big .opt .v{font-size:11px}
+.big .opt{padding:14px 16px}
+.big .spk .who{font-size:14px;letter-spacing:.2em;padding:4px 14px}
+.foot{
+  flex:0 0 auto;padding:8px 20px;border-top:1px solid var(--line);
+  font-size:9.5px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+.foot b{color:var(--amber);font-weight:500;text-transform:none;letter-spacing:.1em}
+
+/* ---- tutorial ---- */
+.tut-card{text-align:center}
+.tut-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}
+.tut-count{font-size:10px;letter-spacing:.22em;color:var(--faint);font-variant-numeric:tabular-nums}
+.tut-step{min-height:300px;display:flex;flex-direction:column;align-items:center}
+.tut-step.fwd{animation:tutInFwd .38s cubic-bezier(.22,1,.36,1)}
+.tut-step.back{animation:tutInBack .38s cubic-bezier(.22,1,.36,1)}
+@keyframes tutInFwd{0%{opacity:0;transform:translateX(30px)}100%{opacity:1;transform:none}}
+@keyframes tutInBack{0%{opacity:0;transform:translateX(-30px)}100%{opacity:1;transform:none}}
+.tut-t{font-family:var(--serif);font-size:clamp(24px,3.4vw,34px);color:var(--amber2);letter-spacing:.1em;margin-bottom:16px}
+.tut-b{font-size:14.5px;color:var(--dim);line-height:1.95;max-width:540px;margin-bottom:8px}
+.tut-demo{width:100%;max-width:520px;margin:18px auto 4px}
+.tut-dots{display:flex;gap:7px;justify-content:center;margin:26px 0 22px}
+.tut-dots i{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.12);transition:.3s}
+.tut-dots i.on{width:22px;background:var(--amber)}
+.tut-nav{display:flex;gap:10px;justify-content:center;align-items:center}
+.mi[disabled]{opacity:.35;cursor:not-allowed}
+.mi[disabled]:hover{border-color:var(--line);color:var(--dim);background:none}
+/* demo: the five meters — bars grow in, danger words fade in behind them */
+.tm{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.tm .l{width:58px;text-align:right;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.tm .bar{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+.tm .bar i{display:block;height:100%;width:0;border-radius:2px;animation:tutbar 1.4s cubic-bezier(.22,1,.36,1) both}
+@keyframes tutbar{to{width:var(--w)}}
+.tm .w{width:70px;text-align:left;font-size:9px;letter-spacing:.1em;color:var(--red);opacity:0;animation:tutfade .5s both}
+@keyframes tutfade{to{opacity:1}}
+/* demo: a sample option card, inert */
+.tut-opt{cursor:default;text-align:left}
+.tut-opt:hover{transform:none}
+/* demo: the three readings of one line, cycling purely in CSS */
+.tut-layers{position:relative;height:104px}
+.tl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;opacity:0;animation:tlcycle 9s infinite}
+.tl:nth-child(2){animation-delay:3s}
+.tl:nth-child(3){animation-delay:6s}
+@keyframes tlcycle{0%{opacity:0;transform:translateY(10px)}5%,30%{opacity:1;transform:none}35%,100%{opacity:0;transform:translateY(-6px)}}
+.tl .q{font-family:var(--serif);font-size:17px;color:var(--ink)}
+.tl .tg{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line);border-radius:2px;padding:2px 7px}
+/* demo: ten unsaid pips fill once, then the label flips to the flood */
+.tut-pips{display:flex;gap:5px;justify-content:center;margin:22px 0 12px}
+.tut-pips i{width:26px;height:6px;border-radius:1px;background:rgba(255,255,255,.07);animation:tp .35s both}
+@keyframes tp{to{background:var(--cold);box-shadow:0 0 8px rgba(111,168,220,.55)}}
+.tut-pip-lbl{position:relative;height:20px;text-align:center;font-size:11px;letter-spacing:.18em}
+.tp1,.tp2{position:absolute;inset:0}
+.tp1{color:var(--cold2);animation:tpout .5s 4.3s both}
+.tp2{color:var(--red);opacity:0;animation:tutfade .5s 4.3s both}
+@keyframes tpout{to{opacity:0}}
+/* demo: ledger + web, reusing the sidebar's own classes */
+.tut-web{max-width:340px;margin:0 auto;text-align:left}
+.tut-web .dot.k{animation:dotpulse 1.6s infinite}
+@keyframes dotpulse{50%{box-shadow:0 0 12px var(--cold)}}
+.tut-note{font-size:10px;letter-spacing:.14em;color:var(--faint);text-align:center;margin-top:10px}
+
+@media(max-width:900px){
+  .side{display:none}
+  .main{padding:18px 16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="table">
+    <svg class="plate" viewBox="0 0 1000 1000" aria-hidden="true">
+      <circle cx="500" cy="500" r="150"/><circle cx="500" cy="500" r="230"/>
+      <circle cx="500" cy="500" r="330"/><circle cx="500" cy="500" r="430"/>
+      <circle cx="330" cy="330" r="46"/><circle cx="670" cy="330" r="46"/>
+      <circle cx="330" cy="670" r="46"/><circle cx="670" cy="670" r="46"/>
+      <circle cx="500" cy="215" r="43"/><circle cx="500" cy="785" r="43"/>
+      <circle cx="215" cy="500" r="43"/><circle cx="785" cy="500" r="43"/>
+      <ellipse cx="500" cy="500" rx="90" ry="90"/>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="topbar">
+      <span class="logo"><b>U N S A I D</b></span>
+      <span id="course"></span>
+      <span class="sp"></span>
+      <button class="key" id="k-lang"><i>L</i><span id="lang-lbl">中文</span></button>
+      <button class="key" id="k-mode"><i>Tab</i><span id="mode-lbl">Literal</span></button>
+      <button class="key" id="k-hint"><i>H</i><span id="hint-lbl">Hints</span></button>
+      <button class="key" id="k-help"><i>?</i><span id="help-lbl">Help</span></button>
+      <span id="clock" style="letter-spacing:.1em"></span>
+    </div>
+    <div class="body">
+      <aside class="side">
+        <div class="sec"><h4 id="s-meters">State</h4><div id="meters"></div></div>
+        <div class="sec"><h4 id="s-ledger">The Ledger</h4><div id="ledger"></div></div>
+        <div class="sec"><h4 id="s-web">The Table</h4><div class="web" id="web"></div></div>
+        <div class="sec"><h4 id="s-keeps">Keepsakes</h4><div class="keeps" id="keeps"></div></div>
+      </aside>
+      <main class="main" id="main"></main>
+    </div>
+    <div class="foot">
+      <span id="f-l">UNSAID — An East Asian Family Simulator</span>
+      <span id="f-r">by <b>26药3 lyx</b></span>
+    </div>
+  </div>
+  <div class="ov" id="overlay"></div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   UNSAID — An East Asian Family Simulator
+   A choice-driven narrative roguelike. Single file, no dependencies, offline.
+   Author: 26药3 lyx
+
+   Module map (top to bottom):
+     i18n ..... every player-facing string that is not content (T)
+     data ..... NPCS / VERBS / LED / FAVOR_BASE / RIPPLES / run constants
+     content .. SPINE / TOPICS / OLDSCORES / ESCAPES / ENDINGS (the writing)
+     meta ..... KEEPSAKES, secret ownership, save-game load & validation
+     state .... the one mutable evening (S), cross-run META, UI flags
+     engine ... verbs -> deltas -> meters, ripples, hardening, endings
+     render ... DOM: chrome, sidebar, scene & options, overlay screens
+     input .... keyboard + topbar buttons; boot
+   ========================================================================= */
+
+/* ------------------------------ i18n ---------------------------------- */
+const T = {
+  en:{
+    state:"State", ledger:"The Ledger", table:"The Table", keeps:"Keepsakes",
+    literal:"Literal", polite:"Polite", trueTr:"What she meant",
+    hints:"Hints", hintsOn:"Hints", hintsOff:"Hints off",
+    whatSay:"What do you say?", inner:"Inside — never heard",
+    course:["","One · Cold Dishes","Two · The Interrogation","Three · The Comparison",
+            "Four · The Toast","Five · The Air Outside","Six · The Old Score",
+            "Seven · The Future","Eight · The Door"],
+    cont:"Continue", begin:"Begin the evening", archive:"Archive",
+    pres:"Classroom Mode", back:"Back", restart:"Another year",
+    face:"Face", filial:"Filial", self:"Self", stress:"Stress", unsaid:"Unsaid",
+    gave:"gave", owe:"you owe",
+    keepStart:"Night has not fallen yet.",
+    presNote:"Fixed seed · six decisions · big type for a projector",
+    drained:"spent", overfull:"overfull", critical:"critical", flooding:"flooding",
+    leakNote:"You meant to agree. That is not what came out.",
+    floodLead:"Something has been building all evening. It is not going to stay inside.",
+    sayIt:"SAY IT",
+    reckoning:"THE RECKONING",
+    tally:"Votes", tallyNote:"Press 1-4 to count hands, then Space",
+    meta:"Year", ofRuns:"year(s) survived",
+    lockedCard:"Not yet seen",
+    present:"Presenter: unlock everything",
+    reset:"Presenter: erase all progress",
+    needWheel:"The Wheel opens after 3 years and 3 keepsakes.",
+    wheelOpen:"THE WHEEL IS OPEN",
+    youBecame:"You are sitting at the head of the table now.",
+    sayWheel:"\u201cSo \u2026 how is work?\u201d",
+    votes:"Votes", voteHint:"Press 1\u20134 to count hands \u00b7 Space to decide",
+    votesBig:"VOTES", misread:"You read that wrong.",
+    plusOne:"+1 unsaid", recap:"What you did tonight",
+    alsoThere:"In the room you never looked at:",
+    help:"Help", tutNext:"Next", tutPrev:"Back", tutSkip:"Skip", tutDone:"Got it"
+  },
+  zh:{
+    state:"状态", ledger:"人情账", table:"饭桌", keeps:"物件",
+    literal:"直译", polite:"客气", trueTr:"真心",
+    hints:"提示", hintsOn:"提示", hintsOff:"提示 关",
+    whatSay:"你要说什么？", inner:"心里正在想（不会被听见）",
+    course:["","一 · 冷盘","二 · 盘问","三 · 比较",
+            "四 · 敬酒","五 · 门外","六 · 旧账",
+            "七 · 未来","八 · 门口"],
+    cont:"继续", begin:"开始这一晚", archive:"档案",
+    pres:"课堂模式", back:"返回", restart:"再过一年",
+    face:"面子", filial:"孝", self:"真我", stress:"压力", unsaid:"未说",
+    gave:"给过", owe:"你欠",
+    keepStart:"天还没黑。",
+    presNote:"固定随机种子 · 六个决策点 · 投影仪大字号",
+    drained:"已耗尽", overfull:"过满", critical:"临界", flooding:"决堤",
+    leakNote:"你本来是想附和的。说出来的不是那句。",
+    floodLead:"攒了一整晚的东西，不会留在里面了。",
+    sayIt:"说 出 口",
+    reckoning:"摊 账 本",
+    tally:"票数", tallyNote:"按 1-4 计数，然后空格",
+    meta:"第", ofRuns:"年",
+    lockedCard:"尚未见到",
+    present:"演示：解锁全部",
+    reset:"演示：清空进度",
+    needWheel:"轮回需要 3 年和 3 件物件才会打开。",
+    wheelOpen:"轮 回 已 开 启",
+    youBecame:"现在坐在主位上的人是你。",
+    sayWheel:"「……今年，工作怎么样？」",
+    votes:"票数", voteHint:"按 1–4 计举手数 · 空格决定",
+    votesBig:"票 数", misread:"你读错了。",
+    plusOne:"未说 +1", recap:"今晚你做了什么",
+    alsoThere:"这屋里你没看过的地方：",
+    help:"帮助", tutNext:"下一步", tutPrev:"上一步", tutSkip:"跳过", tutDone:"明白了"
+  }
+};
+
+/* ------------------------------ NPCs ---------------------------------- */
+const NPCS = {
+  mom:   {en:"Mom",              zh:"妈妈",   clout:4, seat:1,
+          mult:{soften:1.0,confront:1.0,joke:0.9,ritual:0.8,scapegoat:1.4,dumb:1.1,victim:1.0,ally:1.0,passive:1.0,agree:1.0,deflect:1.0,silence:1.1}},
+  dad:   {en:"Dad",              zh:"爸爸",   clout:2, seat:2,
+          mult:{soften:1.3,confront:0.6,joke:0.7,ritual:1.5,scapegoat:1.0,dumb:1.3,victim:0.9,ally:0.8,passive:0.9,agree:1.0,deflect:1.1,silence:0.7}},
+  nai:   {en:"Grandma",          zh:"奶奶",   clout:5, seat:3,
+          mult:{soften:1.5,confront:2.0,joke:0.6,ritual:1.4,scapegoat:2.5,dumb:1.4,victim:0.7,ally:1.2,passive:1.3,agree:1.1,deflect:0.9,silence:1.2}},
+  aunt2: {en:"Auntie",           zh:"二姨",   clout:3, seat:4,
+          mult:{soften:0.4,confront:1.0,joke:0.8,ritual:0.9,scapegoat:0.9,dumb:0.7,victim:1.2,ally:1.0,passive:1.2,agree:1.0,deflect:1.0,silence:1.0}},
+  uncle: {en:"Uncle",            zh:"大舅",   clout:4, seat:5,
+          mult:{soften:0.6,confront:0.8,joke:1.4,ritual:1.5,scapegoat:1.2,dumb:0.8,victim:1.0,ally:1.3,passive:1.0,agree:0.9,deflect:0.8,silence:0.8}},
+  cous:  {en:"Your cousin",      zh:"表妹",   clout:1, seat:6,
+          mult:{soften:0.8,confront:0.7,joke:1.2,ritual:0.4,scapegoat:1.1,dumb:1.0,victim:1.3,ally:1.4,passive:1.1,agree:0.8,deflect:1.2,silence:0.6}},
+  gu:    {en:"Aunt Gu",          zh:"姑妈",   clout:3, seat:7,
+          mult:{soften:0.5,confront:1.2,joke:0.9,ritual:1.0,scapegoat:1.3,dumb:0.6,victim:1.1,ally:0.9,passive:1.4,agree:1.1,deflect:1.0,silence:1.0}},
+  out:   {en:"His girlfriend",   zh:"表哥女友",clout:1, seat:8,
+          mult:{soften:0.5,confront:1.5,joke:1.6,ritual:0.3,scapegoat:0.8,dumb:0.9,victim:0.8,ally:0.7,passive:0.8,agree:1.0,deflect:1.1,silence:0.9}}
+};
+
+/* ------------------------------ verbs --------------------------------- */
+const VERBS = {
+  agree:    {en:"AGREE",              zh:"附和",     fx:{face: 4,filial: 8,self:-6,stress:-6,unsaid: 0}},
+  deflect:  {en:"CHANGE THE SUBJECT", zh:"转移话题", fx:{face: 3,filial: 2,self: 0,stress:-3,unsaid: 1}},
+  confront: {en:"PUSH BACK",          zh:"硬刚",     fx:{face:-10,filial:-12,self:12,stress:10,unsaid:-6}},
+  passive:  {en:"SAY IT SIDEWAYS",    zh:"阴阳怪气", fx:{face:-3,filial:-5,self: 5,stress:-8,unsaid: 2}},
+  dumb:     {en:"PLAY DUMB",          zh:"装傻",     fx:{face:-4,filial:-3,self: 1,stress:-4,unsaid: 1}},
+  victim:   {en:"PLAY THE VICTIM",    zh:"卖惨",     fx:{face: 2,filial: 5,self:-4,stress: 4,unsaid: 1}},
+  scapegoat:{en:"DEFLECT THE BLAME",  zh:"甩锅",     fx:{face: 5,filial: 3,self:-8,stress:-7,unsaid: 0}},
+  soften:   {en:"SOFTEN",             zh:"示弱",     fx:{face: 2,filial: 7,self: 1,stress:-5,unsaid: 0}},
+  joke:     {en:"MAKE A JOKE",        zh:"幽默化解", fx:{face: 6,filial: 4,self: 3,stress:-6,unsaid: 0}},
+  ally:     {en:"CALL FOR BACKUP",    zh:"搬救兵",   fx:{face: 2,filial:-2,self:-2,stress:-9,unsaid: 1}},
+  ritual:   {en:"POUR A DRINK",       zh:"敬酒夹菜", fx:{face: 6,filial: 6,self:-3,stress:-8,unsaid: 2}},
+  silence:  {en:"SAY NOTHING",        zh:"沉默",     fx:{face:-2,filial: 3,self:-4,stress: 4,unsaid: 3}},
+  unsaid:   {en:"SAY THE UNSAID",     zh:"说心里话", fx:{face:-8,filial:-10,self:15,stress:-20,unsaid:-8}}
+};
+const LED = {agree:6,soften:8,ritual:7,victim:5,deflect:2,dumb:2,passive:0,joke:3,ally:4,silence:1,confront:-4,scapegoat:-6,unsaid:-2};
+/* Per-verb favour delta on the NPC you speak to. Distinct from LED: LED feeds
+   the ledger (gave / owed), this feeds the relationship web. */
+const FAVOR_BASE = {agree:6,soften:8,ritual:6,joke:5,deflect:2,dumb:-3,victim:-4,passive:-6,confront:-14,scapegoat:-8,ally:-4,silence:0,unsaid:-4};
+/* Verbs that assume you understood the kind reading of a line, and verbs that
+   are attempts rather than certainties. */
+const WARM_VERBS  = ["agree","soften"];
+const RISKY_VERBS = ["confront","passive","joke","scapegoat"];
+/* Option hotkeys — also the vote-row labels in classroom mode. */
+const KEYS = "ABCDEF";
+
+/* ------------------------- ripple rules -------------------------------- */
+const RIPPLES = [
+  {if:{npc:"nai", min:10},   then:[["mom",-8]],   en:"Your mother watches you take the orange.", zh:"你妈看着你接过那个橘子。"},
+  {if:{npc:"dad", min:10},   then:[["mom",-6]],   en:"Your mother hears you take his side.",     zh:"你妈听见你站在你爸那边。"},
+  {if:{npc:"aunt2", max:-10},then:[["cous",12]],  en:"Your cousin looks up from her phone.",     zh:"你表妹从手机后面抬起头。"},
+  {if:{npc:"gu", min:10},    then:[["*",3]],      en:"Aunt Gu will repeat this to everyone.",    zh:"姑妈会把这件事讲给所有人听。"},
+  {if:{npc:"gu", max:-10},   then:[["*",-3]],     en:"Aunt Gu will repeat this to everyone.",    zh:"姑妈会把这件事讲给所有人听。"},
+  {if:{npc:"cous", min:10},  then:[["aunt2",-5]], en:"Auntie notices you being nice to her son's kid.", zh:"二姨注意到你对她女儿好。"},
+  {if:{npc:"out", min:10},   then:[["*",-2]],     en:"Everyone is being nice now. There is a guest.", zh:"有外人在，所有人突然都客气了。"}
+];
+
+/* --------------------------- run constants ----------------------------- */
+const START = {face:50,filial:50,self:50,stress:25,unsaid:0};
+const BASE_UNSAID = 1;
+/* Everyone sits down at favour 45; the ripple thresholds are offsets from it. */
+const FAVOR_START = 45;
+/* The ledger you inherit at the door: [gave, owed] per relative, seeded from
+   the design doc. Anyone not listed starts at zero. */
+const LEDGER_SEED = {
+  mom:[312,41], dad:[96,12], nai:[214,88], uncle:[143,0],
+  gu:[52,45], aunt2:[18,63], cous:[7,31]
+};
+
+/* =======================================================================
+   CONTENT
+   ======================================================================= */
+const {s:SPINE, t:TOPICS, o:OLDSCORES, e:ESCAPES, x:ENDINGS} = (()=>{
+
+/* ---- COURSE 1 : COLD DISHES ---- */
+const SPINE = {
+
+arrive:{
+  c:1, npc:"mom",
+  zh:"回来啦。……瘦了。",
+  en:"You're back. \u2026You've gotten thinner.",
+  polite:"You're back. You look well.",
+  tru:"You're back. I've been counting the days.",
+  conf:91,
+  inner:{en:"I was home four months ago.", zh:"我四个月前才回来过。"},
+  q:{en:"How do you come in?", zh:"你怎么进门？"},
+  opts:[
+    {v:"agree",   en:"\u201cMom.\u201d  (hug her)",              zh:"「妈。」（抱一下）"},
+    {v:"joke",    en:"\u201cThinner? I gained ten pounds.\u201d",zh:"「哪儿瘦了，我胖了十斤。」"},
+    {v:"ritual",  en:"Set the bag down. \u201cI brought you something.\u201d", zh:"放下袋子。「给你带了点东西。」"},
+    {v:"silence", en:"Nod. Take off your shoes.",                zh:"点头。换鞋。"}
+  ]},
+
+orange:{
+  c:1, npc:"nai",
+  zh:"哎哟回来了！瘦了瘦了。来，先吃个橘子。",
+  en:"You're back! You're so thin. Here \u2014 eat an orange first.",
+  polite:"You're back! Here, have an orange.",
+  tru:"You're back. Let me feed you before anybody else gets to you.",
+  conf:96,
+  inner:{en:"The last orange I ate was three months ago.", zh:"我上次吃橘子是三个月前。"},
+  opts:[
+    {v:"soften",  en:"\u201cThank you, Grandma.\u201d  (take it)", zh:"「谢谢奶奶。」（收下）"},
+    {v:"deflect", en:"\u201cI'm not hungry, Grandma.\u201d",       zh:"「不用了奶奶，我不饿。」"},
+    {v:"joke",    en:"\u201cI've gotten fatter. Your eyes are lying.\u201d", zh:"「我胖了，奶奶你眼睛骗人。」"},
+    {v:"ritual",  en:"Peel it. Give her half.",                  zh:"剥开，分她一半。"}
+  ]},
+
+/* ---- COURSE 2 ---- */
+followup:{
+  c:2, npc:"mom",
+  zh:"她这专业我也不懂。我说让她考个编，她不听。",
+  en:"I don't understand her major either. I told her to take the civil service exam. She won't listen.",
+  polite:"Her field is a little hard to explain. I just want her to have something stable.",
+  tru:"I can't explain my own daughter to my friends. Do you know what that feels like?",
+  conf:85,
+  inner:{en:"You have never once asked me what I wanted to do.", zh:"你从来没问过我想干什么。"},
+  opts:[
+    {v:"agree",    en:"\u201cI'll think about it.\u201d",              zh:"「我考虑考虑。」"},
+    {v:"deflect",  en:"\u201cMom, the fish is burning.\u201d",          zh:"「妈，菜要糊了。」"},
+    {v:"ritual",   en:"Put a piece of fish in her bowl.",              zh:"给她夹一筷子鱼。"},
+    {v:"confront", en:"\u201cYou have never asked me what I want.\u201d",zh:"「你从来没问过我想干什么。」"},
+    {v:"silence",  en:"Say nothing.",                                  zh:"不说话。"}
+  ]},
+
+/* ---- COURSE 3 ---- */
+xiaochen:{
+  c:3, npc:"aunt2",
+  zh:"你看隔壁小陈家孩子，今年又升职了。",
+  en:"You see the Chen kid next door? Promoted again this year.",
+  polite:"The Chen boy seems to be doing very well these days.",
+  tru:"I am afraid you will be left behind, and then I will have nothing to say.",
+  conf:92,
+  inner:{en:"I was at the office until 2 a.m. every night last week.", zh:"我上周天天加班到两点。"},
+  opts:[
+    {v:"agree",    en:"\u201cYeah. He's impressive.\u201d",              zh:"「是啊，他厉害。」"},
+    {v:"passive",  en:"\u201cYeah, he's amazing. Not like me.\u201d",     zh:"「是啊，他真厉害，不像我。」"},
+    {v:"deflect",  en:"\u201cAuntie, try this.\u201d",                    zh:"「二姨你尝尝这个。」"},
+    {v:"confront", en:"\u201cAuntie \u2014 what does your son do again?\u201d", zh:"「二姨，您儿子现在做什么来着？」"}
+  ]},
+
+/* ---- COURSE 4 ---- */
+toast:{
+  c:4, npc:"uncle",
+  zh:"来，丫头，给爷爷奶奶说两句。",
+  en:"Come on, kid. Say a few words to your grandparents.",
+  polite:"Come on, say something nice for the family.",
+  tru:"Say something. Prove you are still one of us.",
+  conf:90,
+  inner:{en:"There is a photo of Grandpa on that chair. Nobody moved it.", zh:"那把椅子上放着爷爷的照片。没人收走。"},
+  opts:[
+    {v:"ritual",   en:"Stand up. Raise your glass.",                    zh:"站起来，敬一杯。"},
+    {v:"joke",     en:"\u201cI'm bad at speeches. Tea instead of wine.\u201d", zh:"「我嘴笨，我以茶代酒。」"},
+    {v:"confront", en:"\u201cI don't want to perform tonight.\u201d",    zh:"「我今晚不想表演。」"},
+    {v:"silence",  en:"Stand there. Say nothing.",                      zh:"站着，不说话。"}
+  ]},
+
+/* ---- COURSE 5 ---- */
+escape:{
+  c:5, npc:null,
+  zh:"你站起来，说去趟洗手间。走廊很短。你只能去一个地方。",
+  en:"You stand up and say you're going to the bathroom. The hallway is short. You only get one place to go.",
+  conf:100,
+  inner:{en:"Eight people are in that room. None of them know where I am right now.", zh:"屋里有八个人。现在没有一个人知道我在哪。"},
+  q:{en:"Where do you go?", zh:"你去哪？"},
+  opts:[
+    {v:"deflect", en:"The balcony.",            zh:"阳台。",     go:"esc_balcony"},
+    {v:"deflect", en:"The kitchen.",            zh:"厨房。",     go:"esc_kitchen"},
+    {v:"deflect", en:"The bathroom. Your phone.",zh:"厕所。掏手机。", go:"esc_bath"},
+    {v:"soften",  en:"Back to the table \u2014 sit with your cousin.", zh:"回桌边，坐到表妹旁边。", go:"esc_cousin"},
+    {v:"ritual",  en:"Stay at the table. Deal a hand of mahjong.",   zh:"留在桌边。码一局麻将。", needK:"mahjong"},
+    {v:"deflect", en:"Put your coat on and go. Now.",                zh:"穿上外套，现在就走。", needK:"keys"}
+  ]},
+
+esc_kitchen:{
+  c:5, npc:"mom", reveal:["k11","k6"],
+  zh:"你妈背对着你，手在水里。她没有回头。",
+  en:"Your mother is facing away, hands in the water. She does not turn around.",
+  polite:"Your mother is doing the dishes.",
+  tru:"Your mother is doing the dishes. She has been doing them for twenty years.",
+  conf:55,
+  inner:{en:"She has been standing there the whole evening.", zh:"她整晚都站在这儿。"},
+  q:{en:"Do you stay?", zh:"你留吗？"},
+  opts:[
+    {v:"agree",   en:"\u201cIt's fine. Work is fine.\u201d",        zh:"「不累。」"},
+    {v:"silence", en:"Say nothing. Then say: \u201c\u2026A little tired.\u201d", zh:"先沉默，然后开口：「……有点累。」"},
+    {v:"unsaid",  en:"\u201cTired. I'm tired, Mom.\u201d",          zh:"「累。妈，我累。」"},
+    {v:"confront",en:"\u201cWhy are you the only one washing up?\u201d", zh:"「为什么只有你在这儿洗碗？」"},
+    {v:"soften",  en:"\u201cThat sweater. I still have it. It doesn't fit.\u201d", zh:"「那件毛衣。我还留着。不合身。」", needK:"sweater"}
+  ]},
+
+esc_balcony:{
+  c:5, npc:"dad",
+  zh:"阳台没开灯。你爸在打电话，声音很低。他没看见你。",
+  en:"The balcony light is off. Your father is on the phone, very quiet. He hasn't seen you.",
+  polite:"Your father is taking a call outside.",
+  tru:"Your father is taking a call outside. He is asking whether the position is still open.",
+  conf:48,
+  inner:{en:"He goes to work at 7:40 every morning.", zh:"他每天早上七点四十出门。"},
+  reveal:"k2",
+  q:{en:"Do you let him know you're there?", zh:"你让他知道你在这儿吗？"},
+  opts:[
+    {v:"silence", en:"Stay in the dark. Listen.",           zh:"站在黑里，听。"},
+    {v:"soften",  en:"Step out. \u201cDad. It's cold.\u201d", zh:"走出去。「爸，外头冷。」"},
+    {v:"dumb",    en:"Go back inside. Pretend you heard nothing.", zh:"回屋。装作没听见。"},
+    {v:"confront",en:"\u201cHow long has this been going on?\u201d", zh:"「多久了？」"},
+    {v:"soften",  en:"Sit down next to him. Put the tin on the table.", zh:"在他旁边坐下。把烟盒放在桌上。", needK:"tin"}
+  ]},
+
+esc_bath:{
+  c:5, npc:null,
+  zh:"厕所门锁上的一瞬间，手机震了。家族群 99+。",
+  en:"The moment the door locks, your phone buzzes. Family group chat. 99+.",
+  conf:100,
+  inner:{en:"Two minutes. I can have two minutes.", zh:"两分钟。我可以有两分钟。"},
+  reveal:"k9",
+  q:{en:"What do you do with it?", zh:"你拿它怎么办？"},
+  opts:[
+    {v:"agree",   en:"Reply: \u201cOn my way \ud83d\ude0a\u201d",      zh:"回复：「马上到😊」"},
+    {v:"silence", en:"Read everything. Reply to nothing.",  zh:"全看完，一条不回。"},
+    {v:"passive", en:"Screenshot the photo of you. Look at it.", zh:"把那张你的照片截图。看着它。"},
+    {v:"deflect", en:"Put the phone in the sink. Wash your hands.", zh:"把手机放进洗手池边。洗手。"}
+  ]},
+
+esc_cousin:{
+  c:5, npc:"cous",
+  zh:"你坐到表妹旁边。她抬头看了你一眼，把一只耳机递过来。",
+  en:"You sit down next to your cousin. She glances up and offers you one earbud.",
+  polite:"Your cousin is listening to music.",
+  tru:"Your cousin has been sitting here for two hours and nobody has asked her a single question.",
+  conf:64,
+  inner:{en:"Nobody has asked her anything all night.", zh:"整晚没有一个人问过她。"},
+  reveal:"k9b",
+  q:{en:"Do you take it?", zh:"你接吗？"},
+  opts:[
+    {v:"soften",  en:"Take the earbud. Put it in.",         zh:"接过耳机，戴上。"},
+    {v:"ally",    en:"\u201cHow are you actually doing?\u201d", zh:"「你最近到底怎么样？」"},
+    {v:"joke",    en:"\u201cWhat are we listening to?\u201d",   zh:"「听什么呢？」"},
+    {v:"silence", en:"Shake your head. Look at the table.",  zh:"摇头。看着桌子。"}
+  ]},
+
+/* ---- COURSE 7 ---- */
+wedding:{
+  c:7, npc:"aunt2",
+  zh:"那什么时候结婚啊？",
+  en:"So when's the wedding?",
+  polite:"And when will there be good news?",
+  tru:"Everyone at this table is running out of time and none of us will say it.",
+  conf:95,
+  inner:{en:"I have not told anyone here about him. Not one person.", zh:"他的事我没告诉这里任何一个人。一个都没有。"},
+  opts:[
+    {v:"agree",    en:"\u201cSoon. Maybe soon.\u201d",          zh:"「快了。可能快了。」"},
+    {v:"joke",     en:"\u201cWhen you find me someone, Auntie.\u201d", zh:"「二姨你帮我找啊。」"},
+    {v:"confront", en:"\u201cI don't want to talk about this tonight.\u201d", zh:"「我今晚不想聊这个。」"},
+    {v:"silence",  en:"Smile. Say nothing.",                    zh:"笑一下。不说话。"}
+  ]},
+
+/* ---- COURSE 8 ---- */
+goodbye:{
+  c:8, npc:"mom", w:0.35,
+  zh:"路上小心。到了发个消息。",
+  en:"Be careful on the road. Text me when you get there.",
+  polite:"Get home safe.",
+  tru:"I love you. I don't know another way to say it.",
+  conf:100,
+  inner:{en:"\u201cLove you too\u201d exists in my mouth. It has never come out.", zh:"「我也爱你」这句话在我嘴里。它从来没出来过。"},
+  q:{en:"Last thing. Then the door.", zh:"最后一句。然后门。"},
+  opts:[
+    {v:"silence", en:"\u201cI know.\u201d  Turn around.",       zh:"「知道了。」转身。",
+     coda:{en:"You did not turn around. The stairwell light went off behind you.",
+           zh:"你没有回头。楼道的灯在你身后灭了。"}},
+    {v:"agree",   en:"\u201cI know, Mom. Go to bed early.\u201d",zh:"「妈，我知道了。你也早点睡。」",
+     coda:{en:"You said you knew. You have said that every year.",
+           zh:"你说你知道了。这句话你每年都说。"}},
+    {v:"ritual",  en:"Turn back. Hug her.",                     zh:"回头。抱她。",
+     coda:{en:"You turned back at the door. She was still standing there.",
+           zh:"你在门口回了头。她还站在那儿。"}},
+    {v:"unsaid",  en:"\u201cMom \u2014 that thing. I don't blame you.\u201d", zh:"「妈，那件事，我不怪你。」",
+     need:{secret:["k1","k11","k7"]},
+     coda:{en:"You said the hardest sentence at the door, which is the worst place to say it and the only place left.",
+           zh:"你在门口把那句话说了。那是最糟的地方，也是最后剩下的地方。"}},
+    {v:"soften",  en:"\u201cI'll write to you. An actual letter.\u201d",  zh:"「我给你写信。真的信。」", needK:"letter",
+     coda:{en:"You promised a letter. You have not written it yet.",
+           zh:"你答应写一封信。你还没写。"}},
+    {v:"ritual",  en:"\u201cWait \u2014 get in the photo with me.\u201d",  zh:"「等等——你也进来，一起照一张。」", needK:"familypic",
+     coda:{en:"This year there is one photograph with her in it.",
+           zh:"这一年有一张照片，她在里面。"}}
+  ]},
+
+/* ---- FLOOD ---- */
+flood:{
+  npc:null, special:"flood",
+  zh:"攒了一整晚的东西，不会留在里面了。",
+  en:"Something has been building all evening. It is not going to stay inside.",
+  conf:100,
+  opts:[] },
+
+/* ---- THE RECKONING ---- */
+reckoning:{
+  c:6, npc:"mom", special:"reckoning", reveal:"k7", check:{diff:12},
+  zh:"你妈把手机翻过来，屏幕对着你。上面是备忘录。一行一行，日期，金额。",
+  en:"Your mother turns her phone around. A note. Line after line. Dates. Amounts.",
+  polite:"Your mother wants to show you something.",
+  tru:"She is not doing this to hurt you. She is doing this because she has no other way to say \u201clook at me\u201d.",
+  conf:88,
+  inner:{en:"Thirty-seven thousand. I have never seen this number before.", zh:"三十七万。我从没见过这个数字。"},
+  opts:[
+    {v:"agree",    en:"\u201cI know, Mom. I know.\u201d",                 zh:"「我知道，妈。我知道。」"},
+    {v:"confront", en:"\u201cYou chose to pay for those things.\u201d",   zh:"「那些是你自己要给的。」"},
+    {v:"passive",  en:"\u201cThen tell me how much I owe you.\u201d",     zh:"「那你算算我欠你多少。」"},
+    {v:"dumb",     en:"\u201cHow much of that did I ever ask for?\u201d", zh:"「那里有多少是我要过的？」"},
+    {v:"silence",  en:"Say nothing at all.",                              zh:"什么都不说。"}
+  ]}
+};
+
+/* ---- TOPIC DECK (22) ---- */
+const TOPICS = [
+{id:"salary", c:[2,3,7], mine:3, npc:["aunt2","gu","uncle","mom"],
+ zh:"现在一个月拿多少？",
+ en:"So how much do you make a month?",
+ polite:"Are you doing alright for yourself?",
+ tru:"I need to know you are going to be okay.",
+ conf:70,
+ inner:{en:"I did the math on the train. It was not a good train ride.", zh:"我在火车上算过一遍。那趟车坐得很难受。"},
+ opts:[
+  {v:"agree",    en:"\u201cEnough. It's enough.\u201d",           zh:"「够用。够花的。」"},
+  {v:"deflect",  en:"\u201cAuntie, eat. It's getting cold.\u201d", zh:"「二姨吃菜，凉了。」"},
+  {v:"confront", en:"\u201cHow much do you make?\u201d",           zh:"「您拿多少？」"},
+  {v:"dumb",     en:"\u201cSorry, what? The fan is loud.\u201d",   zh:"「啊？抽油烟机太响了。」"}]},
+
+{id:"partner", c:[2,3,7], mine:3, npc:["aunt2","gu","mom","nai"],
+ zh:"有对象了没有啊？",
+ en:"Do you have a partner yet?",
+ polite:"Is there anyone special?",
+ tru:"I am afraid of you being alone. I have been afraid of it for years.",
+ conf:84,
+ inner:{en:"There is. You are not going to meet him.", zh:"有。你们不会见到他。"},
+ opts:[
+  {v:"agree",   en:"\u201cNot yet. Soon, maybe.\u201d",            zh:"「还没。快了。」"},
+  {v:"dumb",    en:"\u201cDefine \u2018partner.\u2019\u201d",      zh:"「『对象』的定义是什么？」"},
+  {v:"victim",  en:"\u201cNobody wants me, Auntie.\u201d",          zh:"「没人要我啊二姨。」"},
+  {v:"passive", en:"\u201cYou'll be the first to know.\u201d",      zh:"「一定第一个通知您。」"}]},
+
+{id:"baby", c:[7], mine:3, npc:["aunt2","nai","gu"],
+ zh:"趁我们还能帮你带。",
+ en:"While we can still help you look after one.",
+ polite:"You shouldn't wait too long.",
+ tru:"I want to be needed again. That is all it is.",
+ conf:62,
+ inner:{en:"Look after. That's the word she chose.", zh:"「帮你带」。她用的是这个字。"},
+ opts:[
+  {v:"agree",    en:"\u201cMaybe. In a few years.\u201d",           zh:"「也许吧。过几年。」"},
+  {v:"confront", en:"\u201cI don't want children.\u201d",           zh:"「我不想要孩子。」"},
+  {v:"joke",     en:"\u201cI can barely look after myself.\u201d",  zh:"「我自己都养不活。」"},
+  {v:"silence",  en:"Drink your soup.",                             zh:"喝汤。"}]},
+
+{id:"exam", c:[2,3], mine:3, npc:["mom","gu","uncle"],
+ zh:"要不还是考个编吧。稳定。",
+ en:"You should really take the civil service exam. It's stable.",
+ polite:"Have you thought about something a bit more secure?",
+ tru:"I do not trust the world you chose. I have seen what it does to people.",
+ conf:77,
+ inner:{en:"Stable. She has said that word four times tonight.", zh:"「稳定」。这个词她今晚说了四遍。"},
+ opts:[
+  {v:"agree",    en:"\u201cI'll look at the dates.\u201d",          zh:"「我看看报名时间。」"},
+  {v:"confront", en:"\u201cStable for who?\u201d",                  zh:"「对谁稳定？」"},
+  {v:"ritual",   en:"Pour her tea.",                                zh:"给她倒茶。"},
+  {v:"deflect",  en:"\u201cUncle, didn't you want to say something?\u201d", zh:"「大舅，你不是有话要说吗？」"},
+  {v:"soften",   en:"\u201cMom \u2014 you got in that year, didn't you.\u201d", zh:"「妈——那年你考上了，对吧。」", needK:"permit"}]},
+
+{id:"neighbour", c:[3], mine:2, npc:["aunt2","mom","gu"],
+ zh:"隔壁那个，跟你同岁，孩子都两岁了。",
+ en:"The one next door \u2014 same age as you. Two kids already.",
+ polite:"People your age are settling down.",
+ tru:"I am keeping score, and I am losing, and it is not even my game.",
+ conf:80,
+ inner:{en:"I have never met this person. She has been in my life for ten years.", zh:"我从没见过这个人。她在我生活里存在了十年。"},
+ opts:[
+  {v:"agree",   en:"\u201cGood for her.\u201d",                     zh:"「那她挺好啊。」"},
+  {v:"passive", en:"\u201cAnd she's so happy, I hear.\u201d",       zh:"「听说她特别幸福。」"},
+  {v:"joke",    en:"\u201cMom, do you want her number?\u201d",      zh:"「妈，要不我把她电话给你？」"},
+  {v:"silence", en:"Keep eating.",                                  zh:"继续吃。"}]},
+
+{id:"weight", c:[1,3], mine:1, npc:["nai","mom","aunt2"],
+ zh:"怎么瘦成这样。是不是没好好吃饭。",
+ en:"You've gotten so thin. Are you eating properly?",
+ polite:"You look a bit tired, that's all.",
+ tru:"I have been worrying about you and I do not know how to say it.",
+ conf:58,
+ inner:{en:"I eat. I just don't eat here.", zh:"我吃。我只是不在这儿吃。"},
+ opts:[
+  {v:"soften", en:"\u201cI'm eating. Don't worry.\u201d",           zh:"「有吃。别担心。」"},
+  {v:"joke",   en:"\u201cThat's the fashion now, Grandma.\u201d",   zh:"「现在流行这样，奶奶。」"},
+  {v:"victim", en:"\u201cI've been really busy.\u201d",             zh:"「最近是真的忙。」"},
+  {v:"ritual", en:"Take a big bite. Show her.",                     zh:"大口吃一口，给她看。"}]},
+
+{id:"major", c:[2,3], mine:3, npc:["aunt2","gu","uncle"],
+ zh:"你这个专业，以后能干什么呀？",
+ en:"What kind of job is that major even for?",
+ polite:"That's an interesting field. What's the plan?",
+ tru:"I cannot explain you to my friends, and it frightens me.",
+ conf:74,
+ inner:{en:"I have explained it eleven times. I will do it again.", zh:"这个我解释过十一遍了。我再来一遍。"},
+ opts:[
+  {v:"agree",    en:"\u201cIt's got good prospects, actually.\u201d", zh:"「其实前景挺好的。」"},
+  {v:"confront", en:"\u201cAuntie, what did your son study again?\u201d", zh:"「二姨，您儿子学的什么来着？」"},
+  {v:"joke",     en:"\u201cMy job is explaining my major. It pays badly.\u201d", zh:"「我的工作就是解释我的专业。工资不高。」"},
+  {v:"deflect",  en:"\u201cUncle, more wine?\u201d",                 zh:"「大舅，再喝点？」"}]},
+
+{id:"teacher", c:[2,7], mine:2, npc:["gu","mom","aunt2"],
+ zh:"女孩子当老师多好，还有寒暑假。",
+ en:"Teaching is so good for a girl. You get the holidays.",
+ polite:"Have you considered teaching? It's a nice life.",
+ tru:"I want a life for you that I am able to describe to other people.",
+ conf:66,
+ inner:{en:"\u201cFor a girl.\u201d There it is.", zh:"「女孩子」。来了。"},
+ opts:[
+  {v:"agree",    en:"\u201cMaybe. I'd be good at it.\u201d",        zh:"「也许吧。我大概能行。」"},
+  {v:"confront", en:"\u201cWhy is that only for girls?\u201d",      zh:"「为什么只有女孩子？」"},
+  {v:"passive",  en:"\u201cAnd I'd have summers off to get married in.\u201d", zh:"「还有寒暑假可以用来结婚。」"},
+  {v:"joke",     en:"\u201cMy students would eat me alive.\u201d",  zh:"「我的学生会把我吃了。」"}]},
+
+{id:"house", c:[3,7], mine:3, npc:["uncle","gu","aunt2"],
+ zh:"房子的事怎么样了？",
+ en:"How's the apartment situation going?",
+ polite:"Are you thinking of settling down anywhere?",
+ tru:"I am counting what I can still give you, and I am counting slowly.",
+ conf:79,
+ inner:{en:"I have looked at listings every night for a month.", zh:"我连续一个月每晚都在看房价。"},
+ opts:[
+  {v:"agree",    en:"\u201cStill looking. Prices are crazy.\u201d", zh:"「还在看。太贵了。」"},
+  {v:"victim",   en:"\u201cI'll never afford one.\u201d",            zh:"「我这辈子买不起。」"},
+  {v:"deflect",  en:"\u201cUncle, is the soup ready?\u201d",         zh:"「大舅，汤好了没？」"},
+  {v:"confront", en:"\u201cAre you offering?\u201d",                 zh:"「您要出钱吗？」"}]},
+
+{id:"dadhealth", c:[3,6], mine:2, npc:["mom","gu","uncle"],
+ zh:"你爸最近血压又高了。他不肯去医院。",
+ en:"Your father's blood pressure is up again. He won't go to the hospital.",
+ polite:"Your father hasn't been feeling great.",
+ tru:"He will not tell you. So I am telling you.",
+ conf:83,
+ inner:{en:"He won't go because he doesn't have insurance right now.", zh:"他不去，是因为他现在没有医保。"},
+ opts:[
+  {v:"agree",    en:"\u201cI'll talk to him.\u201d",                 zh:"「我跟他说。」"},
+  {v:"confront", en:"\u201cThen make him go. You're his wife.\u201d", zh:"「那你让他去啊。你是他老婆。」"},
+  {v:"silence",  en:"Look at your father. He is watching TV.",       zh:"看你爸。他在看电视。"},
+  {v:"soften",   en:"\u201cOkay. I'll take him next week.\u201d",    zh:"「好。我下周带他去。」"}]},
+
+{id:"grandmamiss", c:[1,6], mine:1, npc:["nai","mom","uncle"],
+ zh:"你奶奶天天念叨你。她眼睛不行了。",
+ en:"Your grandmother talks about you every day. Her eyes are going.",
+ polite:"Grandma has been asking after you.",
+ tru:"She is old. Time is short and none of us is saying it out loud.",
+ conf:90,
+ inner:{en:"Her eyes. Nobody told me about her eyes.", zh:"她的眼睛。没人告诉过我她的眼睛。"},
+ opts:[
+  {v:"soften",  en:"\u201cI'll come back more. I promise.\u201d",     zh:"「我多回来。我保证。」"},
+  {v:"victim",  en:"\u201cIt's so far. You know how far it is.\u201d", zh:"「太远了。你们知道有多远。」"},
+  {v:"ritual",  en:"Go sit next to her.",                             zh:"过去坐在她旁边。"},
+  {v:"silence", en:"\u201c\u2026Mm.\u201d",                          zh:"「……嗯。」"},
+  {v:"soften",  en:"Show her the old photograph. Ask who the others were.", zh:"把老照片拿给她看。问其他人是谁。", needK:"photo"}]},
+
+{id:"blinddate", c:[7], mine:3, npc:["gu","aunt2","nai"],
+ zh:"我们单位小李，条件挺好的，我把你微信给他了。",
+ en:"There's a Li at my office. Good conditions. I already gave him your WeChat.",
+ polite:"I showed your photo to someone. I hope that's alright.",
+ tru:"Let me do one thing for you. Just one.",
+ conf:71,
+ inner:{en:"She gave a stranger my WeChat. She is waiting for me to thank her.", zh:"她把我的微信给了一个陌生人。她在等我谢她。"},
+ opts:[
+  {v:"agree",    en:"\u201cAuntie, you shouldn't have \u2014 but okay.\u201d", zh:"「姑妈你怎么这样——算了，好吧。」"},
+  {v:"confront", en:"\u201cDelete it. Right now, in front of me.\u201d", zh:"「删了。现在，当着我的面。」"},
+  {v:"passive",  en:"\u201cGreat. I love being arranged.\u201d",      zh:"「太好了。我就喜欢被安排。」"},
+  {v:"silence",  en:"Put your phone face down on the table.",        zh:"把手机屏幕朝下放在桌上。"}]},
+
+{id:"abroad", c:[2,3], mine:2, npc:["uncle","gu","cous"],
+ zh:"国外到底怎么样？是不是特别乱？",
+ en:"What's it really like over there? Is it as dangerous as they say?",
+ polite:"Is it very different over there?",
+ tru:"Come home. I am not going to say it directly, so I am asking about the weather.",
+ conf:52,
+ inner:{en:"They have never asked what I do there. Only whether it's safe.", zh:"他们从来没问过我在那儿做什么。只问安不安全。"},
+ opts:[
+  {v:"agree",   en:"\u201cIt's fine. You'd like it.\u201d",          zh:"「挺好的。你会喜欢的。」"},
+  {v:"joke",    en:"\u201cVery dangerous. I fight a bear every Tuesday.\u201d", zh:"「特别乱。我每周二跟熊搏斗。」"},
+  {v:"confront",en:"\u201cYou've never asked what I actually do there.\u201d", zh:"「你们从来没问过我在那儿干什么。」"},
+  {v:"victim",  en:"\u201cIt's hard. It's really hard.\u201d",        zh:"「很难。真的很难。」"}]},
+
+{id:"yousaid", c:[2,3,7], mine:2, npc:["mom","gu","uncle"],
+ zh:"你不是说要换工作吗？后来呢？",
+ en:"Didn't you say you were going to change jobs? What happened?",
+ polite:"How is work these days?",
+ tru:"I remember everything you tell me. I write it down.",
+ conf:68,
+ inner:{en:"I never told her that. Not once.", zh:"我没跟她说过这个。一次都没有。"},
+ opts:[
+  {v:"agree",   en:"\u201cStill thinking about it.\u201d",           zh:"「还在想。」"},
+  {v:"confront",en:"\u201cI never said that. You made that up.\u201d", zh:"「我没说过。是你自己编的。」"},
+  {v:"dumb",    en:"\u201cDid I? When?\u201d",                        zh:"「我说过吗？什么时候？」"},
+  {v:"silence", en:"Let it pass.",                                    zh:"让它过去。"}]},
+
+{id:"redpacket", c:[1,4,8], mine:1, npc:["nai","mom","uncle","gu"],
+ zh:"拿着。别推。",
+ en:"Take it. Don't argue with me.",
+ polite:"Here, this is for you.",
+ tru:"Let me still be useful to you. That is the only thing I have left.",
+ conf:94,
+ inner:{en:"If I take it, I owe her. If I don't, I hurt her.", zh:"收了，我就欠她。不收，我就伤她。"},
+ opts:[
+  {v:"ritual",  en:"Push back twice. Then take it.",                 zh:"推两次。然后收下。"},
+  {v:"agree",   en:"\u201cThank you. I'll take it.\u201d",           zh:"「谢谢。我收下。」"},
+  {v:"confront",en:"\u201cI don't need your money.\u201d",           zh:"「我不要你的钱。」"},
+  {v:"soften",  en:"\u201cOnly if you let me buy you something.\u201d", zh:"「那你让我给你买点东西。」"}]},
+
+{id:"momforyou", c:[3,6], mine:3, npc:["gu","uncle","aunt2"],
+ zh:"你妈为了你，什么没做过。你可不能没良心。",
+ en:"Your mother gave up everything for you. Don't you dare be ungrateful.",
+ polite:"Your mother has done a great deal for you.",
+ tru:"Please appreciate her. I cannot do it for you.",
+ conf:73,
+ inner:{en:"She gave up everything. Nobody asked her to.", zh:"她放弃了一切。没有人让她放弃。"},
+ opts:[
+  {v:"agree",    en:"\u201cI know. I know she did.\u201d",           zh:"「我知道。我知道她做了很多。」"},
+  {v:"confront", en:"\u201cNobody asked her to give up anything.\u201d", zh:"「没有人让她放弃什么。」"},
+  {v:"passive",  en:"\u201cThen you should thank her. You're her brother.\u201d", zh:"「那你谢她啊。你是她哥。」"},
+  {v:"silence",  en:"Look at your plate.",                            zh:"看着自己的盘子。"}]},
+
+{id:"obedient", c:[3,6], mine:2, npc:["mom","nai","uncle"],
+ zh:"你小时候多乖啊。说什么听什么。",
+ en:"You used to be such a good kid. Whatever we said, you did.",
+ polite:"You were such an easy child.",
+ tru:"I miss the child who needed me. I know that is not fair to you.",
+ conf:81,
+ inner:{en:"I was good because being good was the only way to be safe.", zh:"我乖，是因为乖是唯一安全的方式。"},
+ opts:[
+  {v:"agree",   en:"\u201cI was, wasn't I.\u201d",                    zh:"「是啊，我那时候真乖。」"},
+  {v:"confront",en:"\u201cI was quiet. That's not the same thing.\u201d", zh:"「我是安静。那不是一回事。」"},
+  {v:"passive", en:"\u201cAnd look how well that worked out.\u201d",   zh:"「结果多好啊。」"},
+  {v:"joke",    en:"\u201cI peaked at nine. It's been downhill since.\u201d", zh:"「我九岁就是巅峰了，之后一直在下滑。」"},
+  {v:"confront",en:"\u201cHere's the certificate you kept. What was it for?\u201d", zh:"「你留的那张奖状。那是为了什么？」", needK:"award"}]},
+
+{id:"wewantnothing", c:[7], mine:3, npc:["mom","dad","uncle"],
+ zh:"我们退休了，也不图你什么。",
+ en:"We're retired now. We don't want anything from you.",
+ polite:"We just want you to be happy.",
+ tru:"This is true, and it is also the heaviest sentence in this room.",
+ conf:30,
+ inner:{en:"If that were true, why does the room feel like this?", zh:"如果那是真的，这个房间为什么是这个样子。"},
+ opts:[
+  {v:"agree",   en:"\u201cI know you don't.\u201d",                   zh:"「我知道你们不图。」"},
+  {v:"confront",en:"\u201cThen stop keeping score.\u201d",             zh:"「那就别记账了。」"},
+  {v:"soften",  en:"\u201cI know. Thank you.\u201d",                  zh:"「我知道。谢谢你们。」"},
+  {v:"silence", en:"Say nothing. The TV is very loud.",               zh:"不说话。电视很响。"}]},
+
+{id:"eatmore", c:[1,4,8], mine:1, npc:["nai","mom"],
+ zh:"多吃点。都是你爱吃的。",
+ en:"Eat more. I made all your favourites.",
+ polite:"There's plenty. Have some more.",
+ tru:"Eat. Please eat. I made this for you and I have been making it for twenty years.",
+ conf:99,
+ inner:{en:"She started cooking at six this morning.", zh:"她今天早上六点就开始做了。"},
+ opts:[
+  {v:"soften", en:"\u201cIt's good. It's really good.\u201d",         zh:"「好吃。真的好吃。」"},
+  {v:"ritual", en:"Eat two more bites than you can manage.",          zh:"再吃两口，撑了也吃。"},
+  {v:"agree",  en:"\u201cI'm full, but okay.\u201d",                  zh:"「我饱了，但好吧。」"},
+  {v:"silence",en:"Keep your bowl where it is.",                      zh:"碗不动。"}]},
+
+{id:"happyisgood", c:[7], mine:3, npc:["mom","dad"],
+ zh:"你开心就好。",
+ en:"As long as you're happy.",
+ polite:"We just want you to be happy.",
+ tru:"This sentence has twenty meanings and none of them is the literal one.",
+ conf:12,
+ inner:{en:"Say what you actually mean. Please. Once.", zh:"说点真话吧。求你了。一次就好。"},
+ opts:[
+  {v:"agree",    en:"\u201cThanks, Mom.\u201d",                       zh:"「谢谢妈。」"},
+  {v:"confront", en:"\u201cYou don't mean that.\u201d",               zh:"「你不是这个意思。」"},
+  {v:"soften",   en:"\u201cI'm not happy. But I'm okay.\u201d",       zh:"「我不开心。但我还好。」"},
+  {v:"silence",  en:"Take it at face value. Say nothing.",            zh:"照字面收下。不说话。"}]},
+
+{id:"comeback", c:[7], mine:3, npc:["uncle","gu","mom"],
+ zh:"要不你回来吧。家里好安排。",
+ en:"Why don't you just come back? We could arrange something here.",
+ polite:"Have you thought about moving back?",
+ tru:"I built a life here for you. Please use it. Please.",
+ conf:59,
+ inner:{en:"\u201cArrange.\u201d There is a job waiting that I did not ask for.", zh:"「安排」。有一份我没要过的工作在等我。"},
+ opts:[
+  {v:"agree",    en:"\u201cMaybe. I'll think about it.\u201d",        zh:"「也许吧。我想想。」"},
+  {v:"confront", en:"\u201cI'm not moving back. Not ever.\u201d",     zh:"「我不回来。永远不。」"},
+  {v:"victim",   en:"\u201cThere's nothing for me here.\u201d",       zh:"「这儿没有我的位置。」"},
+  {v:"deflect",  en:"\u201cUncle, your glass is empty.\u201d",        zh:"「大舅，你杯子空了。」"},
+  {v:"silence",  en:"Take the ticket out of your pocket. Put it on the table.", zh:"从口袋里掏出那张票。放在桌上。", needK:"ticket"}]},
+
+{id:"yourfriend", c:[2,3], mine:2, npc:["gu","mom","aunt2"],
+ zh:"老跟你一起那个，是干什么的？",
+ en:"That friend you're always with \u2014 what do they do?",
+ polite:"You seem to have a close friend these days.",
+ tru:"I am checking whether they are safe. That is the only way I know how to love you.",
+ conf:63,
+ inner:{en:"You have never met them. You have never asked to.", zh:"你们从没见过他们。你们也从没说过想见。"},
+ opts:[
+  {v:"agree",   en:"\u201cThey work in design.\u201d",              zh:"「做设计的。」"},
+  {v:"deflect", en:"\u201cNobody you'd know, Auntie.\u201d",         zh:"「您不认识，姑妈。」"},
+  {v:"passive", en:"\u201cYou'd like them. That's the problem.\u201d",zh:"「您会喜欢他们的。问题就在这儿。」"},
+  {v:"confront",en:"\u201cWhy do you need to know?\u201d",           zh:"「您为什么需要知道？」"}]},
+
+{id:"myage", c:[1,3,6], mine:1, npc:["uncle","nai","dad"],
+ zh:"我像你这么大的时候，已经扛起一个家了。",
+ en:"When I was your age, I was already carrying a household.",
+ polite:"Things were different when I was your age.",
+ tru:"I am asking you to understand me. I am not very good at it.",
+ conf:88,
+ inner:{en:"He was carrying a household because nobody asked him if he wanted to.", zh:"他扛起一个家，是因为没有人问过他想不想。"},
+ opts:[
+  {v:"soften", en:"\u201cI know you did. I know.\u201d",            zh:"「我知道。我知道你扛过。」"},
+  {v:"joke",   en:"\u201cAnd look how well that worked out for you.\u201d", zh:"「结果您看，多成功啊。」"},
+  {v:"ritual", en:"Pour him another one.",                          zh:"再给他倒一杯。"},
+  {v:"silence",en:"Let it sit.",                                    zh:"让这句话待在那儿。"}]},
+
+{id:"secondkid", c:[7], mine:3, npc:["aunt2","nai","gu"],
+ zh:"你表哥都二胎了。",
+ en:"Your cousin is on his second kid now.",
+ polite:"Your cousin's family is growing.",
+ tru:"I am running out of time and I am not allowed to say that.",
+ conf:93,
+ inner:{en:"He is twenty-nine and he looks fifty.", zh:"他二十九岁，看着像五十。"},
+ opts:[
+  {v:"agree",    en:"\u201cGood for him.\u201d",                    zh:"「那挺好的。」"},
+  {v:"confront", en:"\u201cHe looks exhausted.\u201d",              zh:"「他看着快累死了。」"},
+  {v:"victim",   en:"\u201cI can't even keep a plant alive.\u201d",  zh:"「我连盆花都养不活。」"},
+  {v:"deflect",  en:"\u201cGrandma, more soup?\u201d",              zh:"「奶奶，再喝点汤？」"}]},
+
+{id:"divorced", c:[3,6], mine:2, npc:["gu","aunt2","uncle"],
+ zh:"你还记得那个谁吗，离婚了。",
+ en:"Remember so-and-so? She got divorced.",
+ polite:"That girl you used to know \u2014 things haven't worked out for her.",
+ tru:"See? Be careful. I am frightened for you and this is how it comes out.",
+ conf:72,
+ inner:{en:"She was the only one at that wedding who looked happy.", zh:"那场婚礼上只有她一个人看起来是高兴的。"},
+ opts:[
+  {v:"agree",   en:"\u201cThat's a shame.\u201d",                   zh:"「那挺可惜的。」"},
+  {v:"passive", en:"\u201cGood for her, actually.\u201d",           zh:"「其实，挺好的。」"},
+  {v:"dumb",    en:"\u201cWhich one was she again?\u201d",          zh:"「她是哪一位来着？」"},
+  {v:"silence", en:"Keep your face still.",                         zh:"脸上不动。"}]},
+
+{id:"nextyear", c:[7,8], mine:3, npc:["mom","nai","dad"],
+ zh:"明年还回来吗？",
+ en:"Are you coming back next year?",
+ polite:"Will we see you again next Spring Festival?",
+ tru:"Say yes. Just say yes. I will not ask you for anything else.",
+ conf:68,
+ inner:{en:"I have not decided. I decided in October.", zh:"我还没决定。我十月就决定了。"},
+ opts:[
+  {v:"agree",    en:"\u201cOf course I am.\u201d",                  zh:"「当然回来。」"},
+  {v:"dumb",     en:"\u201cDepends on work.\u201d",                 zh:"「看工作吧。」"},
+  {v:"confront", en:"\u201cDon't ask me that at the door.\u201d",    zh:"「别在门口问我这个。」"},
+  {v:"soften",   en:"\u201cI'll try. I really will.\u201d",         zh:"「我尽量。真的。」"}]},
+
+{id:"relyonyou", c:[6,7], mine:3, npc:["uncle","gu","mom"],
+ zh:"今年家里就指望你了。",
+ en:"The family is counting on you this year.",
+ polite:"We're all hoping you'll be able to help out.",
+ tru:"I am tired. I need to put something down and you are the only one standing there.",
+ conf:61,
+ inner:{en:"Counting on me for what. Nobody has said the number.", zh:"指望我什么。没有人说过那个数字。"},
+ opts:[
+  {v:"agree",    en:"\u201cI'll do what I can.\u201d",              zh:"「我尽力。」"},
+  {v:"confront", en:"\u201cFor what, exactly? Say the number.\u201d",zh:"「具体是什么？把数字说出来。」"},
+  {v:"victim",   en:"\u201cI'm barely holding on myself.\u201d",     zh:"「我自己都快撑不住了。」"},
+  {v:"ritual",   en:"Refill his glass instead.",                    zh:"给他把酒满上。"}]},
+
+{id:"wediscussed", c:[6,7], mine:3, npc:["mom","dad"],
+ zh:"我跟你爸商量过了。",
+ en:"Your father and I have discussed it.",
+ polite:"We've given it some thought at home.",
+ tru:"You were not in the conversation. You are never in the conversation.",
+ conf:55,
+ inner:{en:"Discussed. Past tense. It is already decided.", zh:"「商量过了」。过去式。已经定了。"},
+ opts:[
+  {v:"agree",    en:"\u201cOkay. What did you decide?\u201d",       zh:"「好。你们决定了什么？」"},
+  {v:"confront", en:"\u201cWithout me. Again.\u201d",               zh:"「又没叫我。」"},
+  {v:"passive",  en:"\u201cHow thoughtful of you both.\u201d",      zh:"「你们真体贴。」"},
+  {v:"silence",  en:"Wait to hear what it is.",                     zh:"等着听是什么事。"}]},
+
+{id:"phone", c:[1,4], mine:1, npc:["dad","uncle","mom"],
+ zh:"吃饭就吃饭，别老看手机。",
+ en:"Put the phone down. We're eating.",
+ polite:"Let's just eat together.",
+ tru:"Be here. You are always somewhere else and I do not know where.",
+ conf:90,
+ inner:{en:"There are four messages from work on that screen.", zh:"屏幕上四条工作消息。"},
+ opts:[
+  {v:"agree",   en:"\u201cSorry.\u201d  (put it away)",             zh:"「抱歉。」（收起来）"},
+  {v:"joke",    en:"\u201cIt's my boss. He thinks I'm at dinner.\u201d", zh:"「我老板。他以为我在吃饭。」"},
+  {v:"passive", en:"\u201cYou're all on yours too.\u201d",          zh:"「你们也都在看啊。」"},
+  {v:"silence", en:"Turn it face down on the table.",               zh:"屏幕朝下扣在桌上。"}]},
+
+{id:"younever", c:[3,7], mine:2, npc:["mom","dad","gu"],
+ zh:"你什么都不跟我们说。",
+ en:"You never tell us anything.",
+ polite:"You keep a lot to yourself these days.",
+ tru:"I know why. I know it is my fault. I cannot say that out loud.",
+ conf:66,
+ inner:{en:"I told you once. In 2019. You don't remember it.", zh:"我说过一次。2019 年。你不记得了。"},
+ opts:[
+  {v:"agree",    en:"\u201cThere's nothing to tell.\u201d",         zh:"「没什么好说的。」"},
+  {v:"confront", en:"\u201cI told you once. You didn't hear it.\u201d", zh:"「我说过一次。你没听见。」"},
+  {v:"victim",   en:"\u201cYou'd worry. You always worry.\u201d",    zh:"「你们会担心。你们总是担心。」"},
+  {v:"soften",   en:"\u201cI'll try to say more. I will.\u201d",     zh:"「我以后多说点。真的。」"}]},
+
+{id:"pension", c:[6,7], mine:3, npc:["dad","mom"],
+ zh:"我们退休金够花，你别操心我们。",
+ en:"Our pension is enough. Don't worry about us.",
+ polite:"We're fine. Really.",
+ tru:"Please worry about us. But do not let me see you doing it.",
+ conf:34,
+ inner:{en:"He has said this three times tonight.", zh:"这句话他今晚说了三遍。"},
+ opts:[
+  {v:"agree",    en:"\u201cOkay. I won't.\u201d",                   zh:"「好。我不操心。」"},
+  {v:"soften",   en:"\u201cI'm going to worry anyway.\u201d",       zh:"「我还是会操心。」"},
+  {v:"confront", en:"\u201cThen stop saying it three times.\u201d",  zh:"「那就别一晚上说三遍。」"},
+  {v:"silence",  en:"Let him have it.",                             zh:"让他这么说。"}]},
+
+{id:"phototime", c:[4,8], mine:1, npc:["uncle","gu","nai"],
+ zh:"都过来都过来，照一张！",
+ en:"Everybody get together \u2014 photo!",
+ polite:"Let's take a picture before everyone goes.",
+ tru:"I want one picture where everyone is still here.",
+ conf:97,
+ inner:{en:"This is the seventh photo. Nobody has looked at the others.", zh:"这是第七张。前面六张没有人看过。"},
+ opts:[
+  {v:"ritual", en:"Stand where they put you. Smile.",               zh:"站到他们安排的位置。笑。"},
+  {v:"joke",   en:"\u201cDo I have to be in it?\u201d",             zh:"「我非得在里面吗？」"},
+  {v:"agree",  en:"\u201cOne more, then we eat.\u201d",             zh:"「再一张，然后吃饭。」"},
+  {v:"silence",en:"Step out of frame.",                             zh:"退出画面。"}]}
+];
+
+/* ---- OLD SCORES (8) ---- */
+const OLDSCORES = [
+{id:"os_school", npc:"uncle", reveal:"k5", check:{diff:11},
+ zh:"你记不记得，你上大学那年的学费，是我先垫的。",
+ en:"Do you remember \u2014 the year you started university. I covered the tuition first.",
+ polite:"Your mother and I sorted out your tuition back then.",
+ tru:"I am not asking for money. I am asking whether anyone remembers.",
+ conf:67,
+ inner:{en:"I did not know that. Nobody ever told me that.", zh:"我不知道这件事。没有人告诉过我。"},
+ opts:[
+  {v:"agree",   en:"\u201cI didn't know. Thank you, Uncle.\u201d",     zh:"「我不知道。谢谢大舅。」"},
+  {v:"confront",en:"\u201cWhy is this coming up now?\u201d",           zh:"「为什么现在说这个？」"},
+  {v:"soften",  en:"\u201cI'll pay it back. Properly.\u201d",          zh:"「我还。好好还。」"},
+  {v:"silence", en:"\u201c\u2026\u201d",                              zh:"「……」"}]},
+
+{id:"os_wedding", npc:"aunt2", check:{diff:11},
+ zh:"你表哥结婚那次，你妈随的礼，是全家最少的。",
+ en:"At your cousin's wedding, your mother's gift was the smallest in the family.",
+ polite:"Money was tight for your side of the family back then.",
+ tru:"I said it out loud then and I am saying it out loud now. I was wrong. I know I was wrong.",
+ conf:44,
+ inner:{en:"She is telling me this to hurt my mother. It worked.", zh:"她说这个是为了伤我妈。她成功了。"},
+ opts:[
+  {v:"confront",en:"\u201cSay that again with her in the room.\u201d", zh:"「等她在这儿你再说一遍。」"},
+  {v:"passive", en:"\u201cYou've been keeping that one a long time, Auntie.\u201d", zh:"「二姨，这句您存了很久吧。」"},
+  {v:"agree",   en:"\u201cI'll tell her you said so.\u201d",           zh:"「我会转告她的。」"},
+  {v:"dumb",    en:"\u201cWhich wedding was that again?\u201d",        zh:"「哪次婚礼来着？」"}]},
+
+{id:"os_hospital", npc:"gu", reveal:"k10", check:{diff:11},
+ zh:"你爷爷住院那回，就你没回来。",
+ en:"When your grandfather was in the hospital \u2014 you were the only one who didn't come back.",
+ polite:"It was a difficult time for everyone.",
+ tru:"I held your grandmother's hand for eleven nights. I am tired. I want someone to know.",
+ conf:71,
+ inner:{en:"I had exams. I was nineteen. I have thought about it every year since.", zh:"我在考试。我十九岁。这件事我想了每一年。"},
+ opts:[
+  {v:"silence", en:"\u201cYou're right.\u201d",                        zh:"「你说得对。」"},
+  {v:"confront",en:"\u201cI was nineteen and nobody called me.\u201d",  zh:"「我十九岁，没有人打电话给我。」"},
+  {v:"victim",  en:"\u201cI was in the middle of exams.\u201d",         zh:"「我当时在考试。」"},
+  {v:"soften",  en:"\u201cI think about it every year.\u201d",          zh:"「这件事我每年都想。」"}]},
+
+{id:"os_will", npc:"gu", reveal:"k3", check:{diff:11},
+ zh:"妈那套房子的事，是不是该说清楚了。",
+ en:"About Mom's apartment \u2014 shouldn't we sort this out properly?",
+ polite:"We should probably discuss the apartment at some point.",
+ tru:"I have been the one taking her to appointments for six years.",
+ conf:61,
+ inner:{en:"Grandma is sitting three seats away. She can hear this.", zh:"奶奶就坐在三个座位之外。她听得到。"},
+ opts:[
+  {v:"confront",en:"\u201cGrandma is sitting right there.\u201d",       zh:"「奶奶就坐在那儿。」"},
+  {v:"dumb",    en:"\u201cI don't know anything about the apartment.\u201d", zh:"「房子的事我什么都不知道。」"},
+  {v:"deflect", en:"\u201cLet's talk about it another time.\u201d",     zh:"「换个时间说吧。」"},
+  {v:"agree",   en:"\u201cYou've done the most. You should have it.\u201d", zh:"「你做得最多。该给你。」"}]},
+
+{id:"os_art", npc:"mom", reveal:"k1", check:{diff:11},
+ zh:"你高考完那个暑假，我说你要是想学画画，家里也供得起。",
+ en:"The summer after your exams \u2014 I said if you wanted to study art, we could afford it.",
+ polite:"You were very good at drawing when you were small.",
+ tru:"I thought you didn't want it. I have thought that for eleven years and I was wrong.",
+ conf:79,
+ inner:{en:"I never heard her say that. Not once. Not ever.", zh:"我从没听她说过这句。一次都没有。"},
+ opts:[
+  {v:"confront",en:"\u201cYou never said that. You never said that.\u201d", zh:"「你没说过。你从来没说过。」"},
+  {v:"silence", en:"\u201c\u2026I thought you didn't want me to.\u201d",  zh:"「……我以为你不想。」"},
+  {v:"unsaid",  en:"\u201cThen why didn't you let me go?\u201d",        zh:"「那你当时为什么不让我去？」"},
+  {v:"soften",  en:"\u201cIt's alright. It's a long time ago.\u201d",   zh:"「没事。很久以前了。」"}]},
+
+{id:"os_care", npc:"aunt2", reveal:"k4", check:{diff:11},
+ zh:"这六年，谁带妈去医院？谁陪着？反正不是我。",
+ en:"These six years \u2014 who took Mom to the hospital? Who sat with her? Not me, that's for sure.",
+ polite:"It's been hard for everyone these years.",
+ tru:"I am exhausted and this is the only way I know how to say it.",
+ conf:69,
+ inner:{en:"She is right. She is right and she is unbearable.", zh:"她说得对。她说得对，而且她很讨厌。"},
+ opts:[
+  {v:"agree",   en:"\u201cYou're right. You did all of it.\u201d",      zh:"「你说得对。都是你在做。」"},
+  {v:"confront",en:"\u201cThen say it without the knife in it.\u201d",  zh:"「那你能不能不带刀说这句话。」"},
+  {v:"ally",    en:"\u201cGrandma, who took you last time?\u201d",     zh:"「奶奶，上次是谁带你去的？」"},
+  {v:"silence", en:"Let the table absorb it.",                          zh:"让桌子把它吞下去。"}]},
+
+{id:"os_divorce", npc:"uncle", check:{diff:11},
+ zh:"你表姐离婚那事你听说了吧。我跟你说，女人不能太有主见。",
+ en:"You heard about your cousin's divorce. Let me tell you \u2014 a woman can't be too headstrong.",
+ polite:"Your cousin's marriage ended. It's been hard on the family.",
+ tru:"I am talking about my own daughter and I cannot say it plainly.",
+ conf:57,
+ inner:{en:"His daughter is sitting four seats away.", zh:"他女儿就坐在四个座位之外。"},
+ opts:[
+  {v:"confront", en:"\u201cUncle. She's right there.\u201d",           zh:"「大舅。她就坐在那儿。」"},
+  {v:"passive",  en:"\u201cGood thing nobody here is headstrong.\u201d", zh:"「幸好这儿没人有主见。」"},
+  {v:"agree",    en:"\u201cMm.\u201d",                                zh:"「嗯。」", lect:true},
+  {v:"ally",     en:"\u201cCousin \u2014 what do you think?\u201d",    zh:"「表妹，你觉得呢？」"}]},
+
+{id:"os_left", npc:"dad", reveal:"k12", check:{diff:11},
+ zh:"你上次走的时候，你妈在阳台上站到十二点。",
+ en:"Last time you left, your mother stood on the balcony until midnight.",
+ polite:"Your mother misses you after you go.",
+ tru:"I watched her from the door and I did not go out. I am telling you because I did not go out.",
+ conf:49,
+ inner:{en:"He has never said this many words to me in one sentence.", zh:"他从来没跟我说过这么长的一句话。"},
+ opts:[
+  {v:"silence", en:"\u201c\u2026I didn't know.\u201d",                  zh:"「……我不知道。」"},
+  {v:"soften",  en:"\u201cDad. Why didn't you go out there?\u201d",     zh:"「爸。你当时怎么不出去？」"},
+  {v:"confront",en:"\u201cAnd what did you do, Dad?\u201d",             zh:"「那你呢，爸？你做了什么？」"},
+  {v:"victim",  en:"\u201cI have to leave. I have a job.\u201d",        zh:"「我得走。我有工作。」"}]}
+];
+
+/* ---- ESCAPE / SECRETS ---- */
+const ESCAPES = {
+k1:{en:"Mom got into a graduate programme at 22. She didn't go. Because of you.",
+    zh:"你妈 22 岁考上了研究生。她没去。因为你。"},
+k2:{en:"Dad was laid off three months ago. He still leaves the house at 7:40 every morning.",
+    zh:"你爸三个月前被裁员了。他每天早上七点四十照常出门。"},
+k7:{en:"Mom has been on anti-anxiety medication for years. Nobody in this family knows.",
+    zh:"你妈吃了很多年抗焦虑的药。这个家里没有人知道。"},
+k9:{en:"Your cousin has been seeing a therapist since March.",
+    zh:"你表妹从三月开始在看心理医生。"},
+k9b:{en:"Your cousin has been seeing a therapist since March. She shows you the appointment app.",
+     zh:"你表妹从三月开始在看心理医生。她把预约记录给你看。"},
+k11:{en:"Mom has kept every certificate you ever got. And one drawing you made in Year 6.",
+     zh:"你妈留着你所有的奖状。还有你六年级画的一张画。"},
+k3:{en:"Grandma put the apartment in your name. She has told nobody, not even your mother.",
+    zh:"奶奶把房子写了你的名字。她没告诉任何人，连你妈都没说。"},
+k4:{en:"Auntie's son \u2014 the one she is always comparing you to \u2014 dropped out in October. The family is hiding it.",
+    zh:"二姨的儿子——她总拿来跟你比的那个——十月退学了。全家都在瞒着。"},
+k5:{en:"Uncle paid your first year of tuition. Your mother has never paid him back and he has never asked.",
+    zh:"大舅垫了你第一年的学费。你妈一直没还，他也一直没要。"},
+k10:{en:"Six years ago the family wanted to hold a meeting about you. Aunt Gu stopped it. She never told you.",
+     zh:"六年前家族想为你开一次会。姑妈把它拦下来了。她从来没跟你说过。"},
+k12:{en:"There is a letter in Dad's cigarette tin. It is addressed to you. It has no stamp.",
+     zh:"你爸的烟盒里有一封信。收信人是你。没有邮票。"},
+k6:{en:"A month before Grandpa died, Mom and Grandma had a fight about who would raise you. Grandma lost.",
+    zh:"爷爷去世前一个月，妈妈和奶奶为你由谁带大吵过一架。奶奶输了。"}
+};
+
+/* ---- ENDINGS ---- */
+const ENDINGS = [
+{id:"flatline", n:{en:"FLATLINE", zh:"抢救失败"}, rare:false,
+ cond:s=>s.stress>=100&&(s.face<=0||s.self<=0||s.filial<=0),
+ t:{en:"Both numbers hit the floor in the same second. Somebody turns the TV up.",
+    zh:"两个数字在同一秒落地。有人把电视调大了。"},
+ q:{en:"Nobody at this table will ever describe what happened tonight. Not to anyone.",
+    zh:"这张桌子上不会有任何人描述今晚发生了什么。对谁都不会。"}},
+
+{id:"she", n:{en:"SHE UNDERSTOOD", zh:"她懂了"}, rare:true,
+ cond:s=>s.flooded&&s.silenceAfterFlood&&s.filial>=70&&s.momSecret&&s.self>=65,
+ t:{en:"She didn't apologise. She said: \u201cWhen I was 22, I thought about leaving too.\u201d",
+    zh:"她没说对不起。她说：「我 22 岁的时候，也想过走。」"},
+ q:{en:"She was looking at the sink when she said it, not at you.",
+    zh:"她说这句话的时候在看水槽，不是看你。"}},
+
+{id:"ledgerTaken", n:{en:"MOM'S LEDGER \u2014 CARRIED", zh:"妈妈的账本 · 接下"}, rare:false,
+ cond:s=>s.reckoning==="take"&&s.filial>=60,
+ t:{en:"Thirty-seven thousand. You took the number and put it inside you and said nothing.",
+    zh:"三十七万。你把这个数字收下，放进身体里，什么也没说。"},
+ q:{en:"It will be there next year. It will be heavier.",
+    zh:"它明年还在。它会更重。"}},
+
+{id:"ledgerRefused", n:{en:"MOM'S LEDGER \u2014 HANDED BACK", zh:"妈妈的账本 · 退回"}, rare:false,
+ cond:s=>s.reckoning==="refuse"&&s.self>=55,
+ t:{en:"You pushed the phone back across the table. It is not that you don't love her.",
+    zh:"你把手机推回桌子对面。不是你不爱她。"},
+ q:{en:"It's that you will not be a debt. She is quiet for the rest of the evening.",
+    zh:"是你不要当一笔债。整个晚上剩下的时间里，她都很安静。"}},
+
+{id:"flip", n:{en:"THE FLIP", zh:"掀桌"}, rare:false,
+ // You lose the evening two ways: you were wound up all night, or you held it
+ // in until the dam broke and then had nothing left to hold it with.
+ cond:s=>s.stress>=100||(s.flooded&&s.stress>=55),
+ t:{en:"A plate goes over. The red envelope stays on the table. You are crying in the stairwell.",
+    zh:"一个盘子翻了。红包留在桌上。你在楼道里哭。"},
+ q:{en:"It is the worst night of the year and the only one where you were actually there.",
+    zh:"这是这一年最糟的一晚。也是你唯一真正在场的一晚。"}},
+
+{id:"invisible", n:{en:"THE INVISIBLE ONE", zh:"透明人"}, rare:false,
+ cond:s=>s.self<=0,
+ t:{en:"In the family photo, your seat at the table is empty. You were there the whole time.",
+    zh:"全家福里，你在饭桌上的位置是空的。你整晚都在。"},
+ q:{en:"You said \u201cmhm\u201d forty times tonight. Nobody noticed the forty-first.",
+    zh:"你今晚说了四十次「嗯」。没有人注意到第四十一次。"}},
+
+{id:"sensible", n:{en:"THE SENSIBLE ONE", zh:"懂事的代价"}, rare:false,
+ cond:s=>s.filial>=85,
+ t:{en:"You smoothed over every single thing. You are eating leftovers in the kitchen, standing up.",
+    zh:"你把每一件事都圆过去了。你站在厨房吃剩菜。"},
+ q:{en:"Mom comes in and says: \u201cYou've always been the sensible one.\u201d And goes to bed.",
+    zh:"妈妈进来说：「还是你懂事。」然后去睡了。"}},
+
+{id:"severance", n:{en:"SEVERANCE", zh:"断绝"}, rare:false,
+ cond:s=>s.filial<=0,
+ t:{en:"You block the number on the train. Then you block the second one. Then the group.",
+    zh:"你在火车上拉黑了那个号码。然后是第二个。然后是群。"},
+ q:{en:"Free. And there is a room in you that is now permanently empty.",
+    zh:"自由了。而你身体里有一间房，从此永远空着。"}},
+
+{id:"became", n:{en:"YOU BECAME THEM", zh:"成为他们"}, rare:false,
+ cond:s=>s.lectured&&s.filial>=65&&s.face>=65&&s.self<=45,
+ t:{en:"On the way out you told your cousin to be more sensible. You meant it. That is the problem.",
+    zh:"出门时你让表妹懂事一点。你是真心的。问题就在这里。"},
+ q:{en:"You used your mother's sentence. You used it with your mother's voice.",
+    zh:"你用了你妈的那句话。你用你妈的声音说了出来。"}},
+
+{id:"outsider", n:{en:"THE OUTSIDER", zh:"外人"}, rare:false,
+ cond:s=>s.secrets>=3&&s.unsaid>=8,
+ t:{en:"You know about the medication. The layoff. The drawing. You said none of it.",
+    zh:"你知道药的事。裁员的事。那张画。你一句都没说。"},
+ q:{en:"You understand this family better than anyone alive. And you are still a guest here.",
+    zh:"你比活着的任何人都懂这个家。而你在这里仍然是个客人。"}},
+
+{id:"nextyear", n:{en:"NEXT YEAR, MAYBE NOT", zh:"明年不回来了"}, rare:false,
+ cond:s=>s.unsaid>=6&&!s.flooded,
+ t:{en:"You didn't argue. You booked the 20th of January and you will say it was work.",
+    zh:"你没吵。你订了 1 月 20 号的票，然后你会说是工作。"},
+ q:{en:"Your mother will ask, in November, whether the ticket is expensive. You will say it is.",
+    zh:"十一月你妈会问票贵不贵。你会说贵。"}},
+
+{id:"perfect", n:{en:"THE PERFECT DINNER", zh:"圆满"}, rare:false,
+ cond:s=>s.face>=70&&s.filial>=70&&s.self<=35,
+ t:{en:"Everyone takes a photo. You smile in it. It's a good photo. It goes in the group.",
+    zh:"所有人合影。你笑了。照片很好看。它被发进了群里。"},
+ q:{en:"Nobody is unhappy. Including you.",
+    zh:"没有人不高兴。包括你。"}},
+
+{id:"ordinary", n:{en:"AN ORDINARY YEAR", zh:"普通的年"}, rare:false,
+ cond:()=>true,
+ t:{en:"Nothing happened. You ate. You answered. You left at ten past nine.",
+    zh:"什么都没发生。你吃了饭。你回答了问题。你九点十分走的。"},
+ q:{en:"That is also a result. Most years, that is the result.",
+    zh:"这也是一种结果。绝大多数年，就是这个结果。"}},
+
+{id:"wheel", n:{en:"THE WHEEL", zh:"轮回"}, rare:true, wheel:true,
+ cond:s=>s.wheelOpen,
+ t:{en:"You are sitting at the head of the table now. There is a young person across from you.",
+    zh:"现在坐在主位上的人是你。你对面坐着一个年轻人。"},
+ q:{en:"You open your mouth and your mother's sentence comes out of it, in your own voice.",
+    zh:"你张开嘴，你妈的那句话从里面出来，用的是你自己的声音。"}}
+];
+
+return {s:SPINE,t:TOPICS,o:OLDSCORES,e:ESCAPES,x:ENDINGS};
+})();
+
+/* =======================================================================
+   ENGINE
+   ======================================================================= */
+const KEEPSAKES = {
+  letter:{en:"An unsent letter", zh:"一封没寄出的信", how:"she"},
+  permit:{en:"Mom's exam permit", zh:"妈妈的高考准考证", how:"mom"},
+  tin:{en:"Dad's old cigarette tin", zh:"爸爸的旧烟盒", how:"outsider"},
+  photo:{en:"Grandma's old photograph", zh:"奶奶的老照片", how:"ordinary"},
+  award:{en:"Your Year-6 certificate (creased)", zh:"你的小学奖状（皱了）", how:"became"},
+  familypic:{en:"A family photo (your smile is odd)", zh:"一张全家福（你笑得很奇怪）", how:"perfect"},
+  keys:{en:"A set of house keys", zh:"一串家门钥匙", how:"invisible"},
+  ticket:{en:"A ticket for 20 January", zh:"1 月 20 号的火车票", how:"nextyear"},
+  sweater:{en:"A sweater that doesn't fit", zh:"一件不合身的毛衣", how:"flip"},
+  mahjong:{en:"A mahjong set, missing one tile", zh:"一副麻将，缺一张", how:"ledgerTaken"}
+};
+
+/* Who each secret is ABOUT. Fixed, because the text of a secret names a
+   specific person — randomising this put the blue "you know something" dot
+   next to the wrong relative. */
+const SECRET_OWNER = {
+  k1:"mom", k2:"dad", k3:"nai", k4:"aunt2", k5:"uncle", k6:"nai",
+  k7:"mom", k9:"cous", k9b:"cous", k10:"gu", k11:"mom", k12:"dad"
+};
+/* Secrets that actually let you see your mother as a person rather than as
+   someone asking you for something. Only these open the rarest ending. */
+const MOM_OPENS_UP = ["k11"];
+
+const META_KEY = "unsaid.meta.v1";
+const FRESH_META = () => ({runs:0, keepsakes:[], endings:[], secrets:[]});
+/* Anything could be in localStorage — another app's key, a half-written value,
+   the literal string "null", an id from an older build. Validate TYPES and
+   VALUES, or a stale save turns the first click of "Begin" into a blank page. */
+function loadMeta(){
+  try{
+    const raw = localStorage.getItem(META_KEY);
+    if(raw){
+      const m = JSON.parse(raw);
+      if(m && typeof m === "object") return {
+        runs: Math.max(0, m.runs|0),
+        keepsakes: Array.isArray(m.keepsakes) ? m.keepsakes.filter(k => typeof k==="string" && KEEPSAKES[k]) : [],
+        endings:   Array.isArray(m.endings)   ? m.endings.filter(e => ENDINGS.some(x => x.id === e)) : [],
+        secrets:   Array.isArray(m.secrets)   ? m.secrets.filter(k => typeof k==="string" && ESCAPES[k]) : []
+      };
+    }
+  }catch(e){}
+  return FRESH_META();
+}
+function saveMeta(m){ try{ localStorage.setItem(META_KEY, JSON.stringify(m)); }catch(e){} }
+
+/* ---- mutable state (everything the evening can change) ---- */
+let S = null;                 // the evening in progress
+let META = loadMeta();        // cross-run progress, persisted to localStorage
+let LANG = "en", MODE = "literal", HINTS = true, PRES = false;
+let PRES_UNLOCK = false;      // presenter tool: everything unlocked
+let cur = null;               // {node, ctx} currently on screen
+let VOTES = {}, lastVoteNode = null;   // classroom tally
+/* Which overlay is up (title / archive / ending / error), so L and Tab can
+   redraw the right one instead of throwing the ending card away. */
+let RESHOW = null;
+let LAST_ENDING = null, LAST_UNLOCKED = null;
+let TUT_STEP = 0, TUT_FROM = null;   // tutorial: current page + where to return
+const MODES = ["literal","polite","true"];
+
+function t(k){ return T[LANG][k]; }
+function say(o){ if(!o) return ""; return (LANG==="zh" && o.zh) ? o.zh : o.en; }
+/* The name lookups below used to be re-typed at every call site. Centralised
+   so the fallback rule — current language, else English — lives in one place. */
+function npcName(id){ return NPCS[id][LANG]||NPCS[id].en; }
+function keepName(k){ return KEEPSAKES[k][LANG]||KEEPSAKES[k].en; }
+function verbName(v){ const V=VERBS[v]; return V ? (V[LANG]||V.en) : v; }
+function endTitle(e){ return e.n[LANG]||e.n.en; }
+/* An NPC's per-verb multiplier; narration nodes (no NPC) default to 1. */
+function multFor(verb, npcId){
+  return (npcId && NPCS[npcId] && NPCS[npcId].mult[verb]!==undefined) ? NPCS[npcId].mult[verb] : 1;
+}
+
+function rnd(n){ return Math.floor(Math.random()*n); }
+function pick(a){ return a[rnd(a.length)]; }
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+function newRun(){
+  const deck = shuffle(TOPICS).slice(0,10);
+  const os = shuffle(OLDSCORES).slice(0,4);
+  S = {
+    face:START.face, filial:START.filial, self:START.self, stress:START.stress, unsaid:START.unsaid,
+    fatigue:50,
+    npc:{}, ledger:{}, secrets:{}, found:[], keepsakes:META.keepsakes.slice(),
+    flooded:false, silenceAfterFlood:false, reckoning:null, momSecret:false,
+    lectured:false, hardened:{}, history:[], noticeQueue:[], escChoice:null, lastCoda:null, clock:18*60+30,
+    deck, oldscores:os, deckIdx:0, osIdx:0, drawn:[],
+    step:0, schedule:buildSchedule(), lastCourse:0,
+    hits:{agree:0,confront:0,silence:0}
+  };
+  for(const id in NPCS){
+    S.npc[id] = {favor:FAVOR_START};
+    const seed = LEDGER_SEED[id] || [0,0];
+    S.ledger[id] = {gave:seed[0], owed:seed[1]};
+  }
+  PRES = false;
+}
+
+function buildSchedule(){
+  const q = [];
+  const push=(t,o)=>q.push(Object.assign({t},o));
+  push("node",{id:"arrive",c:1});
+  push("node",{id:"orange",c:1});
+  push("draw",{c:2}); push("draw",{c:2}); push("node",{id:"followup",c:2});
+  push("draw",{c:3}); push("node",{id:"xiaochen",c:3}); push("draw",{c:3});
+  push("node",{id:"toast",c:4});
+  push("node",{id:"escape",c:5});
+  push("node",{id:"oldscore",c:6});
+  push("node",{id:"reckoning",c:6});
+  push("draw",{c:7}); push("node",{id:"wedding",c:7}); push("draw",{c:7});
+  push("node",{id:"goodbye",c:8});
+  return q;
+}
+function buildPresSchedule(){
+  return [
+    {t:"node",id:"arrive",c:1},
+    {t:"draw",c:2},
+    {t:"node",id:"xiaochen",c:3},
+    {t:"node",id:"toast",c:4},
+    {t:"node",id:"reckoning",c:6},
+    {t:"node",id:"goodbye",c:8}
+  ];
+}
+
+/* ---- effects ---- */
+function applyVerb(verb, npcId, special){
+  const V = VERBS[verb]; if(!V) return;
+  const m = multFor(verb, npcId);
+  let roll = null, success = true;
+  if(verb==="joke"){
+    // 2d6, succeed on 7+. That makes it a real gamble rather than a trap:
+    // roughly EV-neutral on face/filial, positive on stress, high variance.
+    const d1=rnd(6)+1, d2=rnd(6)+1; roll=d1+d2;
+    success = (roll>=7);
+  }
+  const delta = {};
+  for(const k in V.fx){
+    let v = V.fx[k];
+    if(v!==0) v = Math.round(v*m);
+    if(verb==="joke" && !success && (k==="face"||k==="filial")) v = -Math.abs(v)-2;
+    if(verb==="joke" && !success && k==="stress") v = 4;
+    delta[k]=v;
+  }
+  if(verb!=="unsaid") delta.unsaid = (delta.unsaid||0) + BASE_UNSAID;
+  return {delta, roll, success, mult:m};
+}
+function applyDelta(delta){
+  for(const k in delta){
+    S[k] = clamp(S[k]+delta[k], 0, k==="unsaid"?99:100);
+  }
+}
+function applyLedger(verb, npcId){
+  if(!npcId||!S.ledger[npcId]) return;
+  const g = LED[verb]||0;
+  S.ledger[npcId].gave = Math.max(0, S.ledger[npcId].gave + g*2);
+  S.ledger[npcId].owed = Math.max(0, S.ledger[npcId].owed + Math.round(g*0.8));
+  S.ledger[npcId].owed = Math.min(S.ledger[npcId].owed, S.ledger[npcId].gave);
+}
+function applyRipples(npcId){
+  const log=[];
+  for(const r of RIPPLES){
+    if(r.if.npc!==npcId) continue;
+    const f = S.npc[npcId].favor;
+    if(r.if.min!==undefined && f < FAVOR_START+r.if.min) continue;
+    if(r.if.max!==undefined && f > FAVOR_START+r.if.max) continue;
+    for(const [tid,d] of r.then){
+      if(tid==="*"){ for(const id in NPCS) S.npc[id].favor = clamp(S.npc[id].favor+d,0,100); }
+      else S.npc[tid].favor = clamp(S.npc[tid].favor+d,0,100);
+    }
+    log.push(say(r));
+  }
+  return log;
+}
+function checkHardening(verb){
+  const G = {agree:["agree","soften","victim"], confront:["confront","passive"], silence:["silence","dumb"]};
+  for(const g in G){
+    if(G[g].indexOf(verb)>=0) S.hits[g]++;
+    else S.hits[g] = 0;
+  }
+  if(S.hits.agree>=3 && !S.hardened.agree){ S.hardened.agree=true; return "agree"; }
+  if(S.hits.confront>=3 && !S.hardened.confront){ S.hardened.confront=true; return "confront"; }
+  if(S.hits.silence>=3 && !S.hardened.silence){ S.hardened.silence=true; return "silence"; }
+  return null;
+}
+function hardenedOut(verb){
+  if(S.hardened.agree && ["confront","unsaid"].indexOf(verb)>=0) return true;
+  if(S.hardened.confront && ["soften","ritual","agree"].indexOf(verb)>=0) return true;
+  if(S.hardened.silence && verb==="silence") return true;
+  return false;
+}
+
+/* ---- endings ----
+   Evaluated most-specific-first. The ledger endings sit near the bottom on
+   purpose: the Reckoning happens every year, so it cannot be allowed to
+   swallow the endings that describe who you actually were. */
+const ENDING_ORDER = ["flatline","she","flip","severance","became",
+                      "invisible","perfect","sensible","outsider","nextyear",
+                      "ledgerTaken","ledgerRefused","ordinary"];
+/* The Wheel gate: N full years survived and N keepsakes kept. Callers pass
+   META.runs or META.runs+1 depending on whether the current year is counted. */
+function wheelGateOpen(runs){ return runs>=3 && META.keepsakes.length>=3; }
+function resolveEnding(){
+  const wheelOpen = wheelGateOpen(META.runs+1) || PRES_UNLOCK;
+  const st = {
+    face:S.face, filial:S.filial, self:S.self, stress:S.stress, unsaid:S.unsaid,
+    flooded:S.flooded, silenceAfterFlood:S.silenceAfterFlood, reckoning:S.reckoning,
+    momSecret:S.momSecret, lectured:S.lectured, secrets:S.found.length,
+    wheelOpen
+  };
+  for(const id of ENDING_ORDER){
+    const e = ENDINGS.find(x=>x.id===id);
+    if(e && e.cond(st)) return e;
+  }
+  return ENDINGS.find(x=>x.id==="ordinary");
+}
+/* The Wheel is not a prize for finishing. It is what happens to someone who
+   stayed in the family, stayed themselves, and said the unspeakable once. */
+function wheelEarned(){
+  const open = wheelGateOpen(META.runs+1) || PRES_UNLOCK;
+  return open && S.self>=60 && S.filial>=55 && S.flooded && S.stress<100 && S.face>0;
+}
+
+/* =======================================================================
+   RENDER
+   ======================================================================= */
+const $ = id=>document.getElementById(id);
+const OV = $("overlay"), MAIN = $("main");
+
+function renderChrome(){
+  $("s-meters").textContent = t("state");
+  $("s-ledger").textContent = t("ledger");
+  $("s-web").textContent    = t("table");
+  $("s-keeps").textContent  = t("keeps");
+  $("lang-lbl").textContent = LANG==="en" ? "中文" : "EN";
+  $("mode-lbl").textContent = t(MODE==="true"?"trueTr":MODE);
+  $("hint-lbl").textContent = HINTS ? t("hintsOn") : t("hintsOff");
+  $("help-lbl").textContent = t("help");
+  $("k-hint").classList.toggle("on", HINTS);
+  $("k-mode").classList.toggle("on", MODE!=="literal");
+  $("f-l").textContent = LANG==="zh" ? "《不说》—— 东亚家庭模拟器" : "UNSAID — An East Asian Family Simulator";
+  $("f-r").innerHTML = (LANG==="zh"?"作者 ":"by ")+"<b>26药3 lyx</b>";
+}
+
+function renderSide(){
+  if(!S){ $("meters").innerHTML=""; $("ledger").innerHTML=""; $("web").innerHTML=""; $("keeps").innerHTML=""; return; }
+  const keys=[["face","face"],["filial","filial"],["self","self"],["stress","stress"],["unsaid","unsaid"]];
+  $("meters").innerHTML = keys.map(([k,lab])=>{
+    const v = S[k];
+    const max = k==="unsaid" ? 10 : 100;
+    const filled = Math.max(0, Math.min(10, k==="unsaid" ? Math.round(v*10/12) : Math.round(v/10)));
+    // Every one of these is dangerous at BOTH ends, but "spent" and "overfull"
+    // are not the same thing — they must not share a word.
+    let danger = false, word = "";
+    if(k==="unsaid"){
+      danger = v >= 5;
+      word = v >= 10 ? t("flooding") : (v >= 5 ? "5+" : "");
+    } else if(k==="stress"){
+      danger = v >= 75;
+      word = danger ? t("critical") : "";
+    } else {
+      danger = (v <= 20 || v >= 80);
+      word = v <= 20 ? t("drained") : (v >= 80 ? t("overfull") : "");
+    }
+    const num = `<b class="num">${Math.round(v)}</b><span class="mx">/${max}</span>`;
+    return `<div class="meter ${danger?'danger':''}" data-k="${k}">
+      <div class="row"><span class="nm">${t(lab)}</span>
+        <span class="st">${num}${word?` <em>${word}</em>`:""}</span></div>
+      <div class="pips">${Array.from({length:10},(_,i)=>`<i class="${i<filled?'on':''}"></i>`).join("")}</div>
+    </div>`;
+  }).join("");
+
+  $("ledger").innerHTML = Object.keys(NPCS).map(id=>{
+    const l=S.ledger[id]; const gap=l.gave-l.owed;
+    return `<div class="led"><span>${npcName(id)}</span>
+      <b><span class="g">+${l.gave}</span> <span class="gap">/</span> <span class="o">−${l.owed}</span></b></div>`;
+  }).join("");
+
+  $("web").innerHTML = Object.keys(NPCS).map(id=>{
+    const n=S.npc[id], known = S.found.some(k=>SECRET_OWNER[k]===id);
+    return `<div class="wn"><span class="dot ${known?'k':(n.favor>=70?'hi':'')}"></span>
+      <span class="nm2">${npcName(id)}</span>
+      <span class="bar"><i style="width:${n.favor}%"></i></span>
+      <span class="cl">${"★".repeat(NPCS[id].clout)}</span></div>`;
+  }).join("");
+
+  const ks = S.keepsakes;
+  $("keeps").innerHTML = ks.length
+    ? ks.map(k=>`<div>· ${keepName(k)}</div>`).join("")
+    : `<div style="color:var(--faint)">${t("keepStart")}</div>`;
+}
+
+function fxArrows(fx){
+  const names={face:"face",filial:"filial",self:"self",stress:"stress"};
+  const parts=[];
+  for(const k in fx){
+    if(k==="unsaid") continue;
+    const v=fx[k]; if(!v) continue;
+    const n=Math.abs(v)>=10?2:1;
+    const col=v>0?"var(--green)":"var(--red)";
+    parts.push(`<b style="color:${col}">${t(names[k])}${v>0?"↑":"↓"}${n>1?"↑":""}</b>`);
+  }
+  return parts.join(" ");
+}
+/* A verb that can fail must never advertise only its success case — that was a
+   lie ~42% of the time on MAKE A JOKE. Gambles show both outcomes. */
+function fxText(verb, node, npcId){
+  if(!HINTS) return "";
+  const V=VERBS[verb]; if(!V) return "";
+  const gamble = (verb==="joke") || (node && node.check && RISKY_VERBS.indexOf(verb)>=0);
+  if(!gamble) return fxArrows(V.fx);
+  const m = multFor(verb, npcId);
+  const ok = {}, bad = {};
+  for(const k in V.fx){
+    const good = V.fx[k]!==0 ? Math.round(V.fx[k]*m) : 0;
+    ok[k] = good;
+    bad[k] = (k==="face"||k==="filial") ? -Math.abs(good)-2
+           : (k==="stress") ? 4 : good;
+  }
+  const odds = verb==="joke" ? "7+" : (node.check.diff+"+");
+  return `<b class="dice">\u2684${odds}</b> ${fxArrows(ok)}` +
+         ` <span class="failmark">\u2717</span> ${fxArrows(bad)}`;
+}
+function fxTextSimple(verb){ return HINTS ? fxArrows((VERBS[verb]||{}).fx||{}) : ""; }
+
+/* ---- classroom vote tally (presentation mode only) ---- */
+function votePanelHTML(opts){
+  const hint = LANG==="zh" ? `按 1\u2013${opts.length} 计举手数 · 空格决定`
+                           : `Press 1\u2013${opts.length} to count hands \u00b7 Space to decide`;
+  let h = `<div class="votewrap"><div class="vh">${t("votesBig")} ` +
+          `<span style="color:var(--faint);text-transform:none;letter-spacing:.06em">· ${hint}</span></div>`;
+  opts.forEach((op,i)=>{
+    h += `<div class="vrow" data-vote="${i}"><span class="vl">${KEYS[i]}</span>` +
+         `<span class="vb"><i></i></span><span class="vc">0</span></div>`;
+  });
+  return h + `</div>`;
+}
+function renderVotes(){
+  const rows = MAIN.querySelectorAll(".vrow");
+  if(!rows || !rows.length) return;
+  const vals = Object.keys(VOTES).map(k=>VOTES[k]);
+  const max = vals.length ? Math.max.apply(null, vals.concat([1])) : 1;
+  Array.prototype.forEach.call(rows, r=>{
+    const i = (r.dataset && r.dataset.vote !== undefined) ? +r.dataset.vote : -1;
+    const n = VOTES[i] || 0;
+    const c = r.querySelector && r.querySelector(".vc");
+    const bar = r.querySelector && r.querySelector(".vb i");
+    if(c) c.textContent = n;
+    if(bar) bar.style.width = (n/max*100) + "%";
+    if(r.classList) r.classList.toggle("win", n>0 && n===max);
+  });
+}
+function voteWinner(live){
+  let best = 0, bi = 0;
+  live.forEach((b,i)=>{ const n = VOTES[i]||0; if(n>best){ best=n; bi=i; } });
+  return live[bi];
+}
+function hasKeepsake(k){ return (META.keepsakes||[]).indexOf(k)>=0; }
+/* Notices raised by the previous choice: ripples, misreads, failed checks, the
+   leak. They persist until the next choice, so re-rendering the screen (L / Tab)
+   does not wipe them. */
+function noticesHTML(){
+  const n = (S && S.noticeQueue) || [];
+  if(!n.length) return "";
+  return `<div class="notices">` +
+    n.map(x=>`<div class="${x.bad?'bad':''}">▸ ${x.text}</div>`).join("") + `</div>`;
+}
+
+/* If anything throws after boot, show a page with a way out instead of a blank
+   screen. A stale save must never be a dead end. */
+function showBootError(err){
+  try{
+    OV.style.display = "flex";
+    RESHOW = "error";
+    OV.innerHTML = `<div class="card" style="text-align:left">
+      <h2 style="color:var(--amber2);font-family:var(--serif);letter-spacing:.1em">
+        ${LANG==="zh"?"UNSAID 启动失败":"UNSAID failed to start"}</h2>
+      <p style="font:13px/1.8 ui-monospace,monospace;color:var(--ink);margin:0 0 12px;word-break:break-word">
+        ${String((err && err.message) || err)}</p>
+      <p style="color:var(--faint);margin:0 0 18px;font-size:13px">
+        ${LANG==="zh"?"存档可能来自旧版本。你的进度没有被删除。":"Your saved progress may be from an older version. Nothing was deleted."}</p>
+      <button class="mi" id="wipe">${LANG==="zh"?"清除进度并重新开始":"Reset progress and start"}</button>
+    </div>`;
+    const b = $("wipe");
+    if(b) b.onclick = ()=>{ META = FRESH_META(); saveMeta(META); startRun(false); };
+  }catch(e){ /* last resort: at least log it */ }
+  console.error(err);
+}
+
+/* ---- renderNode helpers ---- */
+/* Secrets surface on arrival, BEFORE rendering, so the reveal text can be part
+   of the screen. (This used to run after MAIN.innerHTML was built, and read
+   ctx.reveal which only a dead function ever produced — the text never showed.)
+   Returns the ids revealed this visit; "__permit" marks the keepsake grant. */
+function applyReveals(node){
+  const revealedNow = [];
+  const revs = node.reveal ? [].concat(node.reveal) : [];
+  revs.forEach(rev=>{
+    if(!ESCAPES[rev] || S.found.indexOf(rev)>=0) return;
+    S.found.push(rev);
+    revealedNow.push(rev);
+    if(MOM_OPENS_UP.indexOf(rev)>=0) S.momSecret = true;
+    META.secrets = Array.from(new Set(META.secrets.concat([rev])));
+    S.self = clamp(S.self+4,0,100); S.stress = clamp(S.stress-5,0,100);
+  });
+  if(node.id==="os_art") S.momSecret = true;
+  // "Mom's exam permit" is tied to learning who your mother was, not to an
+  // ending — that is what the design doc always said. Granted here, mid-run.
+  if(S.momSecret && META.keepsakes.indexOf("permit")<0){
+    META.keepsakes.push("permit"); saveMeta(META);
+    S.keepsakes = META.keepsakes.slice();
+    revealedNow.push("__permit");
+  }
+  return revealedNow;
+}
+/* The four ways an option can be locked: the unsaid is not ready, your habits
+   hardened against it, you lack the keepsake, or you lack the secret. */
+function optLocked(op, isUnsaid, unsaidOK){
+  // A keepsake option is exempt from Hardening: owning the tin gives you a way
+  // back to your father that your own habits cannot take away.
+  return (isUnsaid && !unsaidOK && !op.need) || (hardenedOut(op.v) && !op.needK) ||
+         (op.needK && !hasKeepsake(op.needK)) ||
+         (op.need && (!op.need.secret || !op.need.secret.some(k=>S.found.indexOf(k)>=0)));
+}
+
+function renderNode(node, ctx){
+  cur={node, ctx};
+  if(PRES && lastVoteNode !== node){ VOTES = {}; lastVoteNode = node; }
+  const npcId = (ctx&&ctx.npc) || (typeof node.npc==="string" ? node.npc : null);
+  const inner = node.inner || (ctx&&ctx.inner);
+  const o = node;
+  const speaker = npcId ? npcName(npcId) : (LANG==="zh"?"旁白":"Narration");
+  const conf = o.conf;
+  // The English rendering under the currently selected reading (Literal / Polite / True).
+  const enLine = (MODE==="polite"&&o.polite) ? o.polite : (MODE==="true"&&o.tru) ? o.tru : o.en;
+  const layerName = t(MODE==="true" ? "trueTr" : MODE);
+  const badge = (conf!==undefined)
+      ? `<span class="conf ${conf<60?'low':''}">${conf<60?"〔?〕 ":""}conf ${conf}%</span>` : "";
+  // EN mode: the big line IS the English; the sub-line names the reading.
+  // ZH mode: the big line is the Chinese original; the sub-line is the translation.
+  const lineMain = LANG==="zh" ? o.zh : "\u201c"+enLine+"\u201d";
+  const subLine = LANG==="zh"
+      ? `<div class="sub"><span>EN ›</span><span class="en">\u201c${enLine}\u201d</span>${badge}</div>`
+      : `<div class="sub"><span>${layerName}</span>${badge}</div>`;
+
+  let opts = (o.opts||[]).slice();
+  let leakIdx = -1;
+  if(S.unsaid>=5 && S.unsaid<10 && !node.special){
+    leakIdx = opts.findIndex(x=>x.v==="agree" && !x.need);
+  }
+  const unsaidOK = S.unsaid>=6 || S.stress>=70;
+  const revealedNow = applyReveals(node);
+
+  let html = `<div class="scene flash">
+    <div class="spk"><span class="who${npcId?"":" narr"}">${speaker}</span></div>
+    <div class="line ${LANG==='zh'?'zh':''}">${lineMain}</div>
+    ${subLine}
+    ${noticesHTML()}
+    ${o.special==="reckoning"?reckonHTML():""}
+    ${revealedNow.map(r => r==="__permit"
+        ? `<div class="narr" style="color:var(--amber2)">✦ ${LANG==="zh"?"解锁物件：":"Keepsake unlocked: "}${keepName("permit")}</div>`
+        : `<div class="narr" style="color:var(--cold2)">▸ ${say(ESCAPES[r])}</div>`).join("")}
+    <div class="divider"></div>`;
+
+  if(node.special==="flood"){
+    html += `<div class="qh">${t("sayIt")}</div>
+      <div class="opts"><button class="opt special" data-i="0" data-v="unsaid">
+        <span class="k">↵</span><span class="txt"><span class="v">${verbName("unsaid")}</span>
+        <span class="l">${LANG==="zh"?"「那你当时为什么不让我去？」":"“Then why didn't you let me go?”"}</span>
+        <span class="fx">${fxText("unsaid", node, npcId)}</span></span></button></div></div>`;
+    MAIN.innerHTML = html; bindOpts([{v:"unsaid",flood:true}]);
+    renderSide(); renderCourse(node); renderChrome(); MAIN.scrollTop = 0;
+    return;
+  }
+
+  html += `<div class="qh">${o.q? say(o.q) : t("whatSay")}</div><div class="opts">`;
+  opts.forEach((op,i)=>{
+    const isLeak = (i===leakIdx);
+    const isUnsaid = op.v==="unsaid";
+    const locked = optLocked(op, isUnsaid, unsaidOK);
+    const showV = isLeak ? verbName("agree") : verbName(op.v);
+    html += `<button class="opt ${isUnsaid?'special':''}" data-i="${i}" data-v="${isLeak?'passive':op.v}" ${locked?"disabled":""}>
+      <span class="k">${KEYS[i]}</span>
+      <span class="txt"><span class="v">${showV}</span>
+      <span class="l">${say(op)}</span>
+      <span class="fx">${isLeak?fxTextSimple("agree"):fxText(op.v, node, npcId)}</span></span></button>`;
+  });
+  html += `</div>`;
+
+  if(PRES) html += votePanelHTML(opts);
+
+  if(inner){
+    html += `<div class="inner"><div class="hd"><div class="t">${t("inner")}</div>
+      <span class="plus">${t("plusOne")}</span></div>
+      <div class="x">${say(inner)}</div>
+      <div class="sp">${LANG==="zh"?"它不会被任何人听见。":"Nobody is going to hear this."}</div></div>`;
+  }
+  html += `</div>`;
+  MAIN.innerHTML = html;
+  const all = Array.from(MAIN.querySelectorAll(".opt"));
+  if(all.length && all.every(b=>b.disabled)) all[0].disabled = false; // never dead-end
+  bindOpts(opts, leakIdx);
+  renderSide();
+  renderCourse(node);
+  renderChrome();
+  MAIN.scrollTop = 0;
+}
+
+function renderCourse(node){
+  // Topic cards carry c as an ARRAY ("which courses may this card appear in"),
+  // so it can never index the course-name table directly — it stringifies to
+  // "2,3,7" and the header renders blank. Fall back to the schedule slot.
+  let c = node.c;
+  if(Array.isArray(c)) c = (S.schedule[S.step] && S.schedule[S.step].c) || c[0];
+  c = c || (S.schedule[S.step] && S.schedule[S.step].c) || 1;
+  $("course").textContent = t("course")[c] || "";
+  const h = Math.floor(S.clock/60), m = S.clock%60;
+  $("clock").textContent = h + ":" + (m<10?"0":"") + m;
+}
+
+function reckonHTML(){
+  const l = S.ledger[S.reckonNpc||"mom"];
+  const who = npcName(S.reckonNpc||"mom");
+  const total = 370000 + l.gave*120;
+  const asked = Math.round(total*0.22);
+  return `<div class="narr" style="color:var(--amber2);font-family:var(--serif);font-size:17px;line-height:1.6;margin-bottom:10px">
+    ${LANG==="zh"
+      ? `${who}：「你从小学到大学，学费、生活费、补习班，我一笔一笔记着呢。三十七万。」`
+      : `${who}: “From primary school to university — tuition, living costs, cram school. I kept a record of every yuan. Three hundred and seventy thousand.”`}
+    </div>
+    <div class="narr" style="border-left:2px solid var(--line);padding-left:14px;font-size:14px;line-height:1.65;margin-bottom:6px">
+      ${LANG==="zh"
+        ? `${who}记得的：<b style="color:var(--amber2)">+${total.toLocaleString()}</b>（${who}为你做的）<br>
+           ${who}替你决定的：<b style="color:var(--red)">−${asked.toLocaleString()}</b>（你从来没要过的）<br>
+           <span style="color:var(--faint)">你的账本上记的是：−${l.owed}。你们记的不是同一本账。</span>`
+        : `What ${who} recorded: <b style="color:var(--amber2)">+${total.toLocaleString()}</b> — done for you.<br>
+           What ${who} decided for you: <b style="color:var(--red)">−${asked.toLocaleString()}</b> — never asked for.<br>
+           <span style="color:var(--faint)">Your book says you owe ${l.owed}. You have never been keeping the same book.</span>`}
+    </div>`;
+}
+
+function bindOpts(opts, leakIdx){
+  MAIN.querySelectorAll(".opt").forEach(btn=>{
+    btn.onclick = ()=>{
+      const i = +btn.dataset.i;
+      if(opts.length===1 && opts[0].flood){ doFlood(); return; }
+      const op = opts[i];
+      if(op && op.go){                       // branch within the same schedule slot
+        S.clock += 10;
+        S.escChoice = op.go;
+        const tgt = SPINE[op.go];
+        if(tgt) return renderNode(tgt, {});
+      }
+      choose(op, i===leakIdx, opts);
+    };
+  });
+}
+
+/* ---- choose ---- */
+function choose(op, wasLeak, opts){
+  const node = cur.node;
+  let verb = wasLeak ? "passive" : op.v;
+  const npcId = (cur.ctx&&cur.ctx.npc) || (typeof node.npc==="string" ? node.npc : null);
+  const notices = [];
+  let extraFavor = 0;
+  S.noticeQueue = [];
+
+  if(node.special==="reckoning"){
+    S.reckoning = (verb==="agree"||verb==="dumb") ? "take" : "refuse";
+  }
+  if(op.lect) S.lectured = true;
+
+  const res = applyVerb(verb, npcId);
+  const delta = res.delta;
+
+  // A node may be weighted down (the goodbye is 0.35) so a single screen can
+  // never outweigh the whole evening. Sign is preserved, magnitude rounds to
+  // at least 1 so a choice never becomes a no-op.
+  const w = (typeof node.w === "number") ? node.w : 1;
+  if(w !== 1){
+    for(const k in delta){
+      const raw = delta[k] * w;
+      delta[k] = raw >= 0 ? Math.round(raw) : -Math.round(-raw);
+      if(delta[k] === 0 && raw !== 0) delta[k] = raw > 0 ? 1 : -1;
+    }
+  }
+
+  // ---- Translation confidence becomes real: on a line nobody is sure about,
+  //      answering warmly is a guess, and half the time you guessed wrong. ----
+  if(node.conf!==undefined && node.conf<60 && WARM_VERBS.indexOf(verb)>=0){
+    if(rnd(100) < 50){
+      for(const k in delta) if(delta[k]>0) delta[k] = Math.max(1, Math.round(delta[k]*0.5));
+      extraFavor -= 6;
+      notices.push({text:t("misread"), bad:true});
+    }
+  }
+
+  // ---- explicit 2d6 check on the high-stakes nodes ----
+  let checkRoll = null;
+  if(node.check && RISKY_VERBS.indexOf(verb)>=0){
+    const d1=rnd(6)+1, d2=rnd(6)+1; checkRoll = d1+d2;
+    const mod = clamp(Math.floor((S.self-50)/20), -2, 2);
+    if(checkRoll + mod < node.check.diff){
+      for(const k in delta){
+        if(k==="face"||k==="filial") delta[k] = -Math.abs(delta[k]) - 2;
+        if(k==="self") delta[k] = Math.round(delta[k]*0.4);
+      }
+      delta.stress = (delta.stress||0) + 6;
+      extraFavor -= 8;
+      notices.push({text:(LANG==="zh"?"话没接住。":"It didn't land."), bad:true});
+    }
+  }
+
+  applyDelta(delta);
+  applyLedger(verb, npcId);
+  if(npcId){
+    const base = FAVOR_BASE[verb]||0;
+    S.npc[npcId].favor = clamp(S.npc[npcId].favor + base + extraFavor, 0, 100);
+    // ripples are surfaced to the player now — the web is not a hidden system
+    applyRipples(npcId).forEach(txt => notices.push({text:txt}));
+  }
+  if(verb==="ally"){
+    const others = Object.keys(NPCS).filter(x=>x!==npcId);
+    const a = pick(others); S.npc[a].favor = clamp(S.npc[a].favor-8,0,100);
+  }
+  if(verb==="scapegoat"){
+    const others = Object.keys(NPCS).filter(x=>x!==npcId);
+    const a = pick(others); S.npc[a].favor = clamp(S.npc[a].favor-20,0,100);
+  }
+  if(verb==="confront" && npcId==="nai") S.npc.cous.favor=clamp(S.npc.cous.favor+10,0,100);
+
+  // hidden fatigue
+  if(verb==="silence"||verb==="dumb"||verb==="deflect") S.fatigue = clamp(S.fatigue+2,0,100);
+  if(verb==="confront"||verb==="scapegoat") S.fatigue = clamp(S.fatigue+5,0,100);
+  if(verb==="ritual"||verb==="ally") S.fatigue = clamp(S.fatigue-3,0,100);
+
+  const hard = checkHardening(verb);
+
+  // reveal
+  if(verb==="silence" && S.flooded) S.silenceAfterFlood = true;
+
+  // history — used for the recap on the ending card
+  S.history.push(verb);
+  if(op.coda) S.lastCoda = op.coda;
+  // The leak is silent while you choose, and revealed right after: the point is
+  // that you could not control what came out, not that the button warned you.
+  if(wasLeak) notices.push({text:t("leakNote"), bad:true});
+  S.noticeQueue = notices;
+
+  S.clock += 8 + rnd(9);
+  S.step++;
+  advance();
+}
+
+function doFlood(){
+  S.flooded = true;
+  applyDelta({face:-8,filial:-10,self:15,stress:-20,unsaid:-S.unsaid});
+  S.history.push("flood");
+  // NOTE: no S.step++ here. The flood is rendered *in place of* nothing —
+  // advance() shows it before consuming the pending slot. Incrementing here
+  // silently ate the next scene (an entire course, or the Reckoning).
+  advance();
+}
+
+function advance(){
+  if(S.stress>=100 || S.face<=0 || S.self<=0){ return showEnding(); }
+  // flood injection
+  if(!S.flooded && S.unsaid>=10){
+    return renderNode(SPINE.flood, {});
+  }
+  while(S.step < S.schedule.length){
+    const st = S.schedule[S.step];
+    // ---- Compounding Pressure ----
+    // Every course boundary, the evening bills you for three things:
+    //   what you did not say, who you stopped being, and how good you were.
+    // Being the perfect child is exhausting, and that is the whole point.
+    const cc = st.c || 1;
+    if(cc !== S.lastCourse){
+      let bill = Math.floor(S.unsaid/2);
+      if(S.self<=30) bill += 3;
+      if(S.filial>=85) bill += 2;
+      S.stress = clamp(S.stress + bill, 0, 100);
+      S.fatigue = clamp(S.fatigue + 1, 0, 100);
+      S.lastCourse = cc;
+      if(S.stress>=100) return showEnding();
+    }
+    if(st.t==="node"){
+      if(st.id==="reckoning"){
+        // pick the npc with the biggest gap
+        let best="mom", bg=-1;
+        for(const id in S.ledger){ const g=S.ledger[id].gave-S.ledger[id].owed; if(g>bg){bg=g;best=id;} }
+        S.reckonNpc = best;
+      }
+      if(st.id==="oldscore"){
+        const os = S.oldscores[S.osIdx % S.oldscores.length]; S.osIdx++;
+        return renderNode(os, {});
+      }
+      return renderNode(SPINE[st.id], {});
+    }
+    if(st.t==="draw"){
+      let cands = S.deck.filter(x=>x.c.indexOf(st.c)>=0);
+      if(!cands.length){
+        // The deck is only 10 of 32 cards, so an early course can run dry.
+        // Refill from cards this run has not used yet instead of silently
+        // deleting the slot (which made the decision count drift 15–17).
+        const pool = TOPICS.filter(x=>x.c.indexOf(st.c)>=0 && S.drawn.indexOf(x.id)<0);
+        if(pool.length){ const c2 = pool[rnd(pool.length)]; S.deck.push(c2); cands = [c2]; }
+      }
+      if(cands.length){
+        // Weighted draw. Base weight by how loaded the topic is, and every
+        // point of UNSAID makes a landmine more likely. The longer you hold it
+        // in, the worse the conversation gets — the room can feel it.
+        const w = cands.map(c => (c.mine===3 ? 3 : c.mine===2 ? 4 : 5) + (c.mine===3 ? S.unsaid*0.6 : 0));
+        let total = w.reduce((a,b)=>a+b,0), r = Math.random()*total, idx = 0;
+        for(let i=0;i<cands.length;i++){ r -= w[i]; if(r<=0){ idx=i; break; } }
+        const card = cands[idx];
+        S.deck = S.deck.filter(x=>x!==card);
+        S.drawn.push(card.id);
+        const npc = card.npc[rnd(card.npc.length)];
+        return renderNode(card, {npc});
+      }
+      S.step++; continue;
+    }
+  }
+  showEnding();
+}
+
+/* ---- ending ---- */
+function showEnding(){
+  const e = wheelEarned() ? ENDINGS.find(x=>x.id==="wheel") : resolveEnding();
+  let unlocked = null;
+  META.runs++;
+  if(!META.endings.includes(e.id)) META.endings.push(e.id);
+  // An ending may map to more than one keepsake. Grant the first one the player
+  // does not already own — otherwise the second is unreachable forever.
+  const keepId = Object.keys(KEEPSAKES).find(k=>KEEPSAKES[k].how===e.id && META.keepsakes.indexOf(k)<0);
+  if(keepId){ META.keepsakes.push(keepId); unlocked = keepId; }
+  saveMeta(META);
+  LAST_ENDING = e; LAST_UNLOCKED = unlocked;
+  renderEndingCard(e, unlocked);
+}
+
+function renderEndingCard(e, unlocked){
+  RESHOW = "ending";
+  const wheelOpen = wheelGateOpen(META.runs);
+  const reckName = (e.id==="ledgerTaken"||e.id==="ledgerRefused") && S.reckonNpc
+      ? npcName(S.reckonNpc) : null;
+  // The canonical name is used when the reckoner is Mom (the usual case), so the
+  // Archive and the balance tool keep matching on it; only a different reckoner
+  // gets a substituted name.
+  const endName = (reckName && S.reckonNpc !== "mom")
+      ? (LANG==="zh"
+          ? `${reckName}的账本 · ${(e.n.zh.split("·")[1]||"").trim()}`
+          : `${reckName.toUpperCase()}'S LEDGER — ${(e.n.en.split("—")[1]||"").trim()}`)
+      : endTitle(e);
+
+  OV.innerHTML = `<div class="card flash">
+    <div class="end-t">${LANG==="zh"?"结局":"Ending"}${e.rare?` · ${LANG==="zh"?"稀有":"RARE"}`:""}</div>
+    <div class="end-n">${endName}</div>
+    <div class="end-z">${LANG==="zh"?e.n.en:e.n.zh}</div>
+    <div class="end-txt">${say(e.t)}</div>
+    <div class="end-sub">“${say(e.q)}”</div>
+    ${codaHTML()}
+    ${e.id==="wheel"?wheelBlock():""}
+    <div class="stats">
+      <span>FACE <b>${S.face}</b></span><span>FILIAL <b>${S.filial}</b></span>
+      <span>SELF <b>${S.self}</b></span><span>STRESS <b>${S.stress}</b></span>
+      <span>UNSAID <b>${S.unsaid}</b></span>
+      <span>${LANG==="zh"?"秘密":"Secrets"} <b>${S.found.length}</b></span>
+      <span>${LANG==="zh"?"妈妈的账":"Mom's book"} <b>+${S.ledger.mom.gave} / −${S.ledger.mom.owed}</b></span>
+      <span style="opacity:.55">${LANG==="zh"?"妈妈的疲惫":"Mom's fatigue"} <b>${S.fatigue}</b></span>
+    </div>
+    <div class="narr" style="text-align:center;font-size:13px;margin:0 auto 18px;max-width:520px">
+      ${fatigueLine()}
+    </div>
+    ${recapHTML()}
+    ${unlocked?`<div class="unlocked">${LANG==="zh"?"解锁物件":"Keepsake unlocked"}${LANG==="zh"?"：":": "}<b>${keepName(unlocked)}</b></div>`:""}
+    <div class="unlocked" style="border:none">
+      ${LANG==="zh"?`已度过 <b>${META.runs}</b> 年 · 物件 <b>${META.keepsakes.length}</b> 件 · 已见结局 <b>${META.endings.length}/14</b>`
+                  :`<b>${META.runs}</b> year(s) survived · <b>${META.keepsakes.length}</b> keepsakes · <b>${META.endings.length}/14</b> endings seen`}
+      <div style="margin-top:10px;color:${wheelOpen?'var(--amber2)':'var(--faint)'}">
+        ${wheelOpen? t("wheelOpen") : t("needWheel")}
+      </div>
+    </div>
+    <div class="menu" style="margin-top:26px">
+      <button class="mi primary" id="again">${t("restart")}</button>
+      <button class="mi" id="toTitle">${t("back")}</button>
+    </div>
+    <div class="auth">${LANG==="zh"?"作者 ":"by "}<b>26药3 lyx</b></div>
+  </div>`;
+  OV.style.display="flex";
+  $("again").onclick = ()=>{ OV.style.display="none"; OV.innerHTML=""; startRun(); };
+  $("toTitle").onclick = ()=>{ OV.style.display="none"; OV.innerHTML=""; title(); };
+}
+
+/* The last screen is not allowed to decide WHICH ending you get — only the
+   ending's final sentence. Every goodbye option carries its own coda. */
+function codaHTML(){
+  const c = S && S.lastCoda;
+  if(!c) return "";
+  return `<div class="end-txt" style="color:var(--dim);font-size:15px;font-style:italic;margin-top:14px">
+    ${say(c)}</div>`;
+}
+
+/* The hidden meter is revealed as a picture, never as a number, and the
+   picture changes with how much of her the evening used up. */
+function fatigueLine(){
+  const f = S.fatigue, zh = LANG==="zh";
+  if(f < 30) return zh
+    ? "她坐在没收拾完的桌子边上，脱了一只鞋，在揉脚。<br>她每年都这样。你今年是第一次看见。"
+    : "She is sitting at the uncleared table with one shoe off, rubbing her foot.<br>She does this every year. This is the first year you have seen it.";
+  if(f < 55) return zh
+    ? "她坐在没收拾完的桌子边上，脱了一只鞋，在揉脚。围裙还没解。<br>厨房的水还在流。"
+    : "She is sitting at the uncleared table with one shoe off, rubbing her foot. The apron is still on.<br>The tap is still running in the kitchen.";
+  if(f < 80) return zh
+    ? "她坐在没收拾完的桌子边上，两只鞋都脱了。没有揉脚，只是坐着。<br>盘子还在桌上。她没动。"
+    : "She is sitting at the uncleared table with both shoes off. Not rubbing anything. Just sitting.<br>The plates are still there. She has not moved.";
+  return zh
+    ? "她靠着椅背睡着了，穿着外套，灯还亮着。<br>没有人叫醒她。也没有人注意到她早就不说话了。"
+    : "She fell asleep sitting up, in her coat, with the light still on.<br>Nobody woke her. Nobody noticed she had stopped talking a while ago.";
+}
+
+/* What the evening was actually made of, and what you never looked at. */
+function recapHTML(){
+  const zh = LANG==="zh";
+  const counts = {};
+  (S.history||[]).forEach(v => { if(VERBS[v]) counts[v] = (counts[v]||0)+1; });
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  if(!top.length) return "";
+  const line = top.map(([v,n]) => `${verbName(v)} ×${n}`).join("  ·  ");
+  const places = { esc_kitchen: zh?"厨房":"the kitchen", esc_balcony: zh?"阳台":"the balcony",
+                   esc_bath: zh?"厕所":"the bathroom", esc_cousin: zh?"表妹旁边":"the seat next to your cousin" };
+  const unvisited = Object.keys(places).filter(k => k !== S.escChoice).map(k => places[k]).join(zh?"、":", ");
+  return `<div class="unlocked" style="text-align:center">
+    <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:6px">${t("recap")}</div>
+    <div style="color:var(--amber2);margin-bottom:12px">${line}</div>
+    <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:6px">${t("alsoThere")}</div>
+    <div style="color:var(--faint)">${unvisited}</div>
+  </div>`;
+}
+
+function wheelBlock(){  return `<div style="border:1px solid var(--line);border-radius:4px;padding:18px;margin:22px auto;max-width:520px">
+    <div class="narr" style="margin-bottom:12px">${t("youBecame")}</div>
+    <div class="line" style="font-size:22px">${t("sayWheel")}</div>
+    <div class="sub"><span>EN ›</span><span class="en">“So … how is work?”</span><span class="conf">conf 100%</span></div>
+    <div class="narr" style="color:var(--cold2);margin-bottom:0">
+      ${LANG==="zh"?"你真正想说的是：「我只是想知道你过得好不好。」":"What you actually mean: “I just want to know if you are okay.”"}
+    </div>
+    <div class="narr" style="color:var(--faint);margin-top:10px;margin-bottom:0">
+      ${LANG==="zh"?"他听到的是：「今年，工作怎么样？」":"What he hears: “So? How's work?”"}
+    </div>
+  </div>`;
+}
+
+/* ---- screens ---- */
+function title(){
+  RESHOW = "title";
+  OV.innerHTML = `<div class="card flash">
+    <h1>UNSAID</h1>
+    <h2>${LANG==="zh"?"东亚家庭模拟器":"An East Asian Family Simulator"}</h2>
+    <div class="tag">${LANG==="zh"
+      ? "「每年你都回家。<br>每年都有话没说出口。」"
+      : "“Every year you come home.<br>Every year something stays unsaid.”"}</div>
+    <div class="menu">
+      <button class="mi primary" id="start">${t("begin")}</button>
+      <button class="mi" id="pres">${t("pres")}</button>
+      <button class="mi" id="arch">${t("archive")}</button>
+    </div>
+    <div style="font-size:10px;letter-spacing:.14em;color:var(--faint);margin:-16px 0 20px">${t("presNote")}</div>
+    <div class="auth">${LANG==="zh"?"作者 ":"by "}<b>26药3 lyx</b></div>
+    <div class="hint">
+      <kbd>L</kbd> ${LANG==="zh"?"切换语言":"language"} &nbsp;·&nbsp;
+      <kbd>Tab</kbd> ${LANG==="zh"?"字幕层":"subtitle layer"} &nbsp;·&nbsp;
+      <kbd>A</kbd>–<kbd>F</kbd> ${LANG==="zh"?"选择":"choose"} &nbsp;·&nbsp;
+      <kbd>H</kbd> ${LANG==="zh"?"提示":"hints"} &nbsp;·&nbsp;
+      <kbd>?</kbd> ${t("help")}<br>
+      <span style="color:var(--faint)">${META.runs} ${LANG==="zh"?"年 · 物件":"year(s) · keepsakes"} ${META.keepsakes.length} · ${LANG==="zh"?"结局":"endings"} ${META.endings.length}/14</span>
+    </div>
+  </div>`;
+  OV.style.display="flex";
+  $("start").onclick = ()=>{ OV.style.display="none"; OV.innerHTML=""; startRun(); };
+  $("pres").onclick = ()=>{ OV.style.display="none"; OV.innerHTML=""; startRun(true); };
+  $("arch").onclick = archive;
+  renderChrome();
+}
+
+function archive(){
+  RESHOW = "archive";
+  const cards = ENDINGS.map(e=>{
+    const seen = META.endings.includes(e.id);
+    return `<div class="ac ${seen?'':'locked'}">
+      <div class="n">${seen?endTitle(e):t("lockedCard")}</div>
+      <div class="d">${seen?say(e.t).slice(0,110)+"…":"—"}</div></div>`;
+  }).join("");
+  const ks = Object.keys(KEEPSAKES).map(k=>{
+    const got = META.keepsakes.includes(k);
+    return `<div class="ac ${got?'':'locked'}"><div class="n">${got?keepName(k):t("lockedCard")}</div></div>`;
+  }).join("");
+  OV.innerHTML = `<div class="arch card" style="text-align:left">
+    <h3>${t("archive")}</h3>
+    <div class="ag">${cards}</div>
+    <h3 style="font-size:16px">${t("keeps")}</h3>
+    <div class="ag">${ks}</div>
+    <div class="menu" style="align-items:flex-start">
+      <button class="mi" id="pl">${t("present")}</button>
+      <button class="mi" id="rs">${t("reset")}</button>
+      <button class="mi primary" id="bk">${t("back")}</button>
+    </div>
+    <div class="auth">${LANG==="zh"?"作者 ":"by "}<b>26药3 lyx</b></div>
+  </div>`;
+  OV.style.display="flex";
+  $("pl").onclick = ()=>{                       // presenter tool: open everything
+    PRES_UNLOCK = true;
+    META.runs = Math.max(META.runs, 3);
+    META.keepsakes = Object.keys(KEEPSAKES);
+    META.endings = ENDINGS.map(e=>e.id);
+    saveMeta(META); archive();
+  };
+  $("rs").onclick = ()=>{ META={runs:0,keepsakes:[],endings:[],secrets:[]}; PRES_UNLOCK=false; saveMeta(META); archive(); };
+  $("bk").onclick = title;
+}
+
+function startRun(isPres){
+  try{
+    newRun();
+    if(isPres || PRES){ PRES=true; S.schedule = buildPresSchedule(); }
+    const app = document.querySelector(".app");
+    if(app && app.classList) app.classList.toggle("big", !!PRES);
+    OV.style.display="none"; OV.innerHTML="";
+    RESHOW = null;
+    renderChrome(); renderSide();
+    S.step = 0;
+    advance();
+  }catch(err){ showBootError(err); }
+}
+
+/* =======================================================================
+   TUTORIAL
+   Six pages, each with a live demo drawn from the game's own data. Shown
+   automatically on the very first boot, and any time from the ? button.
+   ======================================================================= */
+const TUT_KEY = "unsaid.tutseen.v1";
+function tutSeen(){ try{ return !!localStorage.getItem(TUT_KEY); }catch(e){ return true; } }
+function markTutSeen(){ try{ localStorage.setItem(TUT_KEY, "1"); }catch(e){} }
+
+const TUT = [
+{t:{en:"One evening, once a year", zh:"一年，只这一晚"},
+ b:{en:"You are home for New Year's dinner. Eight courses, cold dishes to the door. What you say is up to you. What you don't say — the evening is keeping count.",
+    zh:"你回家吃年夜饭。八道菜，从冷盘到门口。说什么，由你。没说的，这一晚一笔一笔替你记着。"}},
+
+{t:{en:"Five things you can spend", zh:"五样会被花掉的东西"}, demo:"meters",
+ b:{en:"Face, filial, self, stress, unsaid. Every meter is dangerous at both ends — drained or overfull. There is no safe number, only one you can still afford.",
+    zh:"面子、孝、真我、压力、未说。每一项都怕两头：耗尽，或者过满。没有安全的数字，只有你还付得起的数字。"}},
+
+{t:{en:"How to answer", zh:"怎么接话"}, demo:"verb",
+ b:{en:"Click, or press A–F. Each option names its move, and with hints on (H) it shows the price — green is gained, red is spent. A dice mark means it can fail; both outcomes are shown.",
+    zh:"点击，或按 A–F。每个选项都标着招式；开着提示（H），还会标出代价——绿是得，红是失。带骰子记号的可能失手，两种结果都摆在你面前。"}},
+
+{t:{en:"One sentence, three hearings", zh:"一句话，三层听法"}, demo:"layers",
+ b:{en:"Tab cycles the subtitle: literal, polite, what she meant. The conf badge says how sure that reading is. Under 60%, even a kind answer is a guess — and a wrong guess costs.",
+    zh:"按 Tab 切换字幕层：直译、客气、真心。conf 是这层读法的把握。低于 60%，连好意都得靠猜——猜错，是要付代价的。"}},
+
+{t:{en:"What stays unsaid", zh:"没说出口的话"}, demo:"unsaid",
+ b:{en:"Almost every answer is +1 unsaid. At five it starts leaking out sideways. At ten it floods — and some years, the flood is the only honest thing that happens all night.",
+    zh:"几乎每个回答，未说 +1。到 5，它开始从侧面漏出来；到 10，决堤。有些年，决堤是这一晚唯一诚实的事。"}},
+
+{t:{en:"The table remembers", zh:"这张桌子记得"}, demo:"web",
+ b:{en:"The left rail is the ledger and the web: who you owe, who is warm, whose secret you carry. Endings leave keepsakes, and keepsakes open new doors next year. Three years, three keepsakes — the Wheel opens.",
+    zh:"左侧是人情账和饭桌：你欠谁、谁还热乎、你攥着谁的秘密。结局会留下物件，物件给明年开新的门。三年，三件——轮回就开。"}}
+];
+
+/* The demos are built from live game data (a real topic, real verbs, the real
+   ledger seed), so the tutorial can never drift away from the game itself. */
+function tutDemoHTML(kind){
+  if(kind==="meters"){
+    const rows = [
+      ["face","var(--amber)",82,t("overfull")],
+      ["filial","#c9a86a",16,t("drained")],
+      ["self","var(--green)",50,""],
+      ["stress","var(--red)",78,t("critical")],
+      ["unsaid","var(--cold)",50,"5+"]];
+    return `<div class="tut-demo">` + rows.map(([k,col,w,word],i)=>
+      `<div class="tm"><span class="l">${t(k)}</span>` +
+      `<span class="bar"><i style="--w:${w}%;background:${col};animation-delay:${(0.12*i+0.1).toFixed(2)}s"></i></span>` +
+      `<span class="w" style="animation-delay:${(0.12*i+1.1).toFixed(2)}s">${word}</span></div>`).join("") + `</div>`;
+  }
+  if(kind==="verb"){
+    const j = SPINE.orange.opts.find(o=>o.v==="joke");
+    return `<div class="tut-demo"><button class="opt tut-opt" tabindex="-1">
+      <span class="k">B</span>
+      <span class="txt"><span class="v">${verbName("joke")}</span>
+      <span class="l">${say(j)}</span>
+      <span class="fx"><b class="dice">⚄7+</b> ${fxArrows(VERBS.joke.fx)}
+        <span class="failmark">✗</span> ${fxArrows({face:-8,filial:-6,stress:4})}</span></span>
+    </button></div>`;
+  }
+  if(kind==="layers"){
+    const d = TOPICS.find(x=>x.id==="happyisgood") || SPINE.arrive;
+    const badge = `<span class="conf ${d.conf<60?'low':''}">${d.conf<60?"〔?〕 ":""}conf ${d.conf}%</span>`;
+    const rows = [[LANG==="zh"?d.zh:d.en, t("literal")], [d.polite, t("polite")], [d.tru, t("trueTr")]];
+    return `<div class="tut-demo"><div class="tut-layers">` +
+      rows.map(([q,tg])=>`<div class="tl"><span class="q">“${q}”</span><span class="tg">${tg}</span></div>`).join("") +
+      `</div><div style="text-align:center">${badge}</div></div>`;
+  }
+  if(kind==="unsaid"){
+    return `<div class="tut-demo"><div class="tut-pips">` +
+      Array.from({length:10},(_,i)=>`<i style="animation-delay:${(0.42*i).toFixed(2)}s"></i>`).join("") +
+      `</div><div class="tut-pip-lbl"><span class="tp1">${t("plusOne")}</span>` +
+      `<span class="tp2">${t("flooding")} — ${t("sayIt")}</span></div></div>`;
+  }
+  if(kind==="web"){
+    return `<div class="tut-demo"><div class="tut-web">
+      <div class="led"><span>${npcName("mom")}</span><b><span class="g">+${LEDGER_SEED.mom[0]}</span> <span class="gap">/</span> <span class="o">−${LEDGER_SEED.mom[1]}</span></b></div>
+      <div class="led"><span>${npcName("aunt2")}</span><b><span class="g">+${LEDGER_SEED.aunt2[0]}</span> <span class="gap">/</span> <span class="o">−${LEDGER_SEED.aunt2[1]}</span></b></div>
+      <div style="height:8px"></div>
+      <div class="wn"><span class="dot hi"></span><span class="nm2">${npcName("nai")}</span><span class="bar"><i style="width:82%"></i></span><span class="cl">${"★".repeat(NPCS.nai.clout)}</span></div>
+      <div class="wn"><span class="dot k"></span><span class="nm2">${npcName("cous")}</span><span class="bar"><i style="width:64%"></i></span><span class="cl">${"★".repeat(NPCS.cous.clout)}</span></div>
+    </div><div class="tut-note">${LANG==="zh"
+      ? "金点 = 关系正热 · 蓝点 = 你知道她的秘密"
+      : "gold = warm right now · blue = you know her secret"}</div></div>`;
+  }
+  return "";
+}
+
+function showTut(step, from, dir){
+  if(from !== undefined) TUT_FROM = from;
+  TUT_STEP = clamp(step, 0, TUT.length-1);
+  RESHOW = "tut";
+  const st = TUT[TUT_STEP], last = TUT_STEP === TUT.length-1;
+  const dc = (dir === undefined || dir >= 0) ? "fwd" : "back";
+  OV.innerHTML = `<div class="card tut-card">
+    <div class="tut-top"><span class="logo"><b>U N S A I D</b></span>
+      <span class="tut-count">${TUT_STEP+1} / ${TUT.length}</span></div>
+    <div class="tut-step ${dc}">
+      <div class="tut-t">${say(st.t)}</div>
+      <div class="tut-b">${say(st.b)}</div>
+      ${st.demo ? tutDemoHTML(st.demo) : ""}
+    </div>
+    <div class="tut-dots">${TUT.map((_,i)=>`<i class="${i===TUT_STEP?'on':''}"></i>`).join("")}</div>
+    <div class="tut-nav">
+      <button class="mi" id="tut-skip">${t("tutSkip")}</button>
+      <span style="flex:1"></span>
+      <button class="mi" id="tut-prev" ${TUT_STEP===0?"disabled":""}>${t("tutPrev")}</button>
+      <button class="mi primary" id="tut-next">${last ? t("tutDone") : t("tutNext")}</button>
+    </div>
+    <div class="hint" style="margin-top:14px">
+      <kbd>←</kbd> <kbd>→</kbd> ${LANG==="zh"?"翻页":"navigate"} &nbsp;·&nbsp;
+      <kbd>Esc</kbd> ${LANG==="zh"?"关闭":"close"} &nbsp;·&nbsp;
+      <kbd>L</kbd> ${LANG==="zh"?"语言":"language"}
+    </div>
+  </div>`;
+  OV.style.display = "flex";
+  OV.scrollTop = 0;
+  $("tut-skip").onclick = closeTut;
+  $("tut-prev").onclick = ()=>tutNav(-1);
+  $("tut-next").onclick = ()=>tutNav(1);
+}
+function tutNav(d){
+  const n = TUT_STEP + d;
+  if(n >= TUT.length){ closeTut(); return; }   // stepping past the end = done
+  if(n < 0) return;
+  showTut(n, undefined, d);
+}
+function closeTut(){
+  markTutSeen();
+  const back = TUT_FROM;
+  if(!back){ RESHOW = null; OV.style.display = "none"; OV.innerHTML = ""; return; }
+  RESHOW = back;           // redrawOverlay re-renders title / archive / ending
+  redrawOverlay();
+}
+
+/* =======================================================================
+   INPUT
+   ======================================================================= */
+/* Redraw whichever screen is currently up. Switching language used to always
+   fall through to title(), which threw the ending card away. */
+function redrawOverlay(){
+  if(OV.style.display !== "flex") return;
+  if(RESHOW==="archive") archive();
+  else if(RESHOW==="ending" && LAST_ENDING) renderEndingCard(LAST_ENDING, LAST_UNLOCKED);
+  else if(RESHOW==="tut") showTut(TUT_STEP);
+  else if(RESHOW==="error"){ /* leave the error page alone */ }
+  else title();
+}
+/* The three chrome toggles, shared by the keyboard and the topbar buttons so
+   the two paths can never drift apart. */
+function toggleLang(){ LANG = LANG==="en"?"zh":"en"; redrawOverlay(); if(cur) renderNode(cur.node,cur.ctx); renderSide(); renderChrome(); }
+function cycleMode(){ MODE = MODES[(MODES.indexOf(MODE)+1)%3]; if(cur) renderNode(cur.node, cur.ctx); renderChrome(); }
+function toggleHints(){ HINTS=!HINTS; if(cur) renderNode(cur.node,cur.ctx); renderChrome(); }
+
+document.addEventListener("keydown", ev=>{
+  const k = ev.key;
+  /* tutorial: it owns the keyboard while it is up (L still switches language) */
+  if(RESHOW==="tut"){
+    if(k==="l"||k==="L"){ toggleLang(); return; }
+    if(k==="ArrowRight"||k==="Enter"||k===" "){ ev.preventDefault(); tutNav(1); return; }
+    if(k==="ArrowLeft"){ ev.preventDefault(); tutNav(-1); return; }
+    if(k==="Escape"){ ev.preventDefault(); closeTut(); return; }
+    return;
+  }
+  /* classroom mode: digits count hands, space decides */
+  if(PRES && "123456".indexOf(k)>=0){
+    const i = +k - 1, btns = MAIN.querySelectorAll(".opt");
+    if(btns[i] && !btns[i].disabled){ VOTES[i] = (VOTES[i]||0)+1; renderVotes(); }
+    ev.preventDefault(); return;
+  }
+  if(PRES && (k===" "||k==="Enter")){
+    const live = Array.prototype.slice.call(MAIN.querySelectorAll(".opt:not([disabled])"));
+    if(live.length){ ev.preventDefault(); voteWinner(live).click(); }
+    return;
+  }
+  if(k==="Tab"){ ev.preventDefault(); cycleMode(); return; }
+  if(k==="l"||k==="L"){ toggleLang(); return; }
+  if(k==="h"||k==="H"){ toggleHints(); return; }
+  if(k==="?"){ ev.preventDefault(); showTut(0, RESHOW); return; }
+  if(OV.style.display === "flex") return;   // never act on the game behind a card
+  const idx = "abcdef".indexOf(k.toLowerCase());
+  if(idx>=0){
+    const btns = MAIN.querySelectorAll(".opt");
+    if(btns[idx] && !btns[idx].disabled){ btns[idx].click(); }
+  }
+  if(k==="Enter"||k===" "){
+    // Always swallow Space: several screens scroll, and Space should never
+    // silently scroll the Reckoning away.
+    ev.preventDefault();
+    if(OV.style.display === "flex") return;
+    const btns = MAIN.querySelectorAll(".opt:not([disabled])");
+    if(btns.length===1) btns[0].click();
+  }
+});
+$("k-lang").onclick = toggleLang;
+$("k-mode").onclick = cycleMode;
+$("k-hint").onclick = toggleHints;
+$("k-help").onclick = ()=>showTut(0, RESHOW);
+
+/* boot — if anything here throws, say so on the page instead of showing nothing */
+try{
+  renderChrome(); renderSide(); title();
+  if(!tutSeen()) showTut(0, "title");   // first boot only — Help brings it back
+}catch(err){
+  document.body.innerHTML =
+    '<div style="padding:44px;font:14px/1.8 ui-monospace,monospace;color:#f0e6d8">' +
+    '<h2 style="color:#d9a441;margin:0 0 14px">UNSAID failed to start</h2>' +
+    '<p style="margin:0 0 10px">' + String((err && err.message) || err) + '</p>' +
+    '<p style="color:#9c8b78;margin:0">Report this to the author: 26药3 lyx</p></div>';
+  console.error(err);
+}
+</script>
+</body>
+</html>
