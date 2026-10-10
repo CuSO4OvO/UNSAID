@@ -307,6 +307,43 @@ button{font-family:inherit;color:inherit;background:none;border:none;cursor:poin
 @keyframes dotpulse{50%{box-shadow:0 0 12px var(--cold)}}
 .tut-note{font-size:10px;letter-spacing:.14em;color:var(--faint);text-align:center;margin-top:10px}
 
+/* ---- v2: choice architecture & feedback channels ---- */
+/* the spoken line IS the option now — verb demoted to a corner tag */
+.opt .l{font-size:17px}
+.opt .v{opacity:.75}
+/* situational slot: what this person is known to be weak to */
+.opt.sit{border-color:rgba(111,168,220,.35)}
+.sittag{font-size:9px;letter-spacing:.12em;color:var(--cold2);border:1px solid rgba(111,168,220,.4);
+  border-radius:2px;padding:1px 5px;margin-left:7px;font-weight:500}
+/* misread made legible: warm answers on a low-conf line carry a visible ? */
+.misq{color:var(--red);border:1px solid var(--red);border-radius:99px;padding:0 5px;
+  font-size:10px;margin-left:7px;font-weight:600}
+/* after the first leak, every AGREE button trembles — you know what it did last time */
+.opt.tremor{animation:tremor 2.2s infinite}
+@keyframes tremor{0%,88%,100%{transform:none}91%{transform:translateX(1.2px)}94%{transform:translateX(-1.2px)}97%{transform:translateX(.6px)}}
+/* NPC reaction close-up: a beat late, in a human voice, not system voice */
+.notices div.react{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--ink);
+  border:none;animation:reactIn .6s .45s both}
+@keyframes reactIn{0%{opacity:0;transform:translateY(5px)}100%{opacity:1;transform:none}}
+/* the table feels the pressure before the meters say it */
+.app.strain .table{filter:saturate(.78) brightness(.9)}
+.app.strain .main{filter:saturate(.85)}
+.app.leaksoon .line{text-shadow:1.5px 0 0 rgba(111,168,220,.28),-1.5px 0 0 rgba(201,85,61,.22)}
+/* fx previews fold away for returning players; hover or H brings them back */
+.fxc .opt .fx{display:none}
+.fxc .opt:hover .fx{display:block}
+/* course slate: one italic line of forewarning at the top of each course */
+.csub{font-family:var(--serif);font-style:italic;font-size:13.5px;color:var(--faint);
+  letter-spacing:.06em;margin:-4px 0 14px;animation:reactIn .7s both}
+/* the opening mindset choice (year 2+) */
+.mind-sub{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--dim);margin-bottom:26px}
+.mind-d{font-size:11px;color:var(--faint);letter-spacing:.04em;margin-top:5px;line-height:1.6}
+/* The three mindset buttons must be identical in size — this is a choice
+   between equals, and the layout should say so. */
+.mindb{width:min(560px,100%);min-width:0;text-align:center}
+/* mindset "see them": hollow blue dot = a secret is buried there */
+.wn .dot.hk{background:transparent;border:1px solid var(--cold);box-shadow:0 0 6px rgba(111,168,220,.5)}
+
 @media(max-width:900px){
   .side{display:none}
   .main{padding:18px 16px}
@@ -406,7 +443,10 @@ const T = {
     votesBig:"VOTES", misread:"You read that wrong.",
     plusOne:"+1 unsaid", recap:"What you did tonight",
     alsoThere:"In the room you never looked at:",
-    help:"Help", tutNext:"Next", tutPrev:"Back", tutSkip:"Skip", tutDone:"Got it"
+    help:"Help", tutNext:"Next", tutPrev:"Back", tutSkip:"Skip", tutDone:"Got it",
+    misq:"You may have misread this", sitTag:"she's weak to this",
+    swallow:"SWALLOW IT", leakFirst:"The words reached your lips — and took a turn.",
+    mindTitle:"This year, you come home \u2026"
   },
   zh:{
     state:"状态", ledger:"人情账", table:"饭桌", keeps:"物件",
@@ -440,7 +480,10 @@ const T = {
     votesBig:"票 数", misread:"你读错了。",
     plusOne:"未说 +1", recap:"今晚你做了什么",
     alsoThere:"这屋里你没看过的地方：",
-    help:"帮助", tutNext:"下一步", tutPrev:"上一步", tutSkip:"跳过", tutDone:"明白了"
+    help:"帮助", tutNext:"下一步", tutPrev:"上一步", tutSkip:"跳过", tutDone:"明白了",
+    misq:"你可能没读懂这句话", sitTag:"她吃这一套",
+    swallow:"咽 回 去", leakFirst:"话到嘴边，拐了个弯。",
+    mindTitle:"今年，你带着什么回来"
   }
 };
 
@@ -471,13 +514,13 @@ const VERBS = {
   confront: {en:"PUSH BACK",          zh:"硬刚",     fx:{face:-10,filial:-12,self:12,stress:10,unsaid:-6}},
   passive:  {en:"SAY IT SIDEWAYS",    zh:"阴阳怪气", fx:{face:-3,filial:-5,self: 5,stress:-8,unsaid: 2}},
   dumb:     {en:"PLAY DUMB",          zh:"装傻",     fx:{face:-4,filial:-3,self: 1,stress:-4,unsaid: 1}},
-  victim:   {en:"PLAY THE VICTIM",    zh:"卖惨",     fx:{face: 2,filial: 5,self:-4,stress: 4,unsaid: 1}},
+  victim:   {en:"PLAY THE VICTIM",    zh:"卖惨",     fx:{face: 2,filial: 5,self:-4,stress: 5,unsaid: 1}},
   scapegoat:{en:"DEFLECT THE BLAME",  zh:"甩锅",     fx:{face: 5,filial: 3,self:-8,stress:-7,unsaid: 0}},
   soften:   {en:"SOFTEN",             zh:"示弱",     fx:{face: 2,filial: 7,self: 1,stress:-5,unsaid: 0}},
   joke:     {en:"MAKE A JOKE",        zh:"幽默化解", fx:{face: 6,filial: 4,self: 3,stress:-6,unsaid: 0}},
   ally:     {en:"CALL FOR BACKUP",    zh:"搬救兵",   fx:{face: 2,filial:-2,self:-2,stress:-9,unsaid: 1}},
   ritual:   {en:"POUR A DRINK",       zh:"敬酒夹菜", fx:{face: 6,filial: 6,self:-3,stress:-8,unsaid: 2}},
-  silence:  {en:"SAY NOTHING",        zh:"沉默",     fx:{face:-2,filial: 3,self:-4,stress: 4,unsaid: 3}},
+  silence:  {en:"SAY NOTHING",        zh:"沉默",     fx:{face:-2,filial: 3,self:-4,stress: 5,unsaid: 3}},
   unsaid:   {en:"SAY THE UNSAID",     zh:"说心里话", fx:{face:-8,filial:-10,self:15,stress:-20,unsaid:-8}}
 };
 const LED = {agree:6,soften:8,ritual:7,victim:5,deflect:2,dumb:2,passive:0,joke:3,ally:4,silence:1,confront:-4,scapegoat:-6,unsaid:-2};
@@ -488,6 +531,158 @@ const FAVOR_BASE = {agree:6,soften:8,ritual:6,joke:5,deflect:2,dumb:-3,victim:-4
    are attempts rather than certainties. */
 const WARM_VERBS  = ["agree","soften"];
 const RISKY_VERBS = ["confront","passive","joke","scapegoat"];
+/* v2 choice architecture: six core stances + at most two situational moves.
+   dumb folds into deflect; victim / joke / scapegoat / ally are situational —
+   they only make sense against a specific person, so they leave the core menu
+   (and keep their own numbers: victim's −4 self is the only self-drain a
+   non-confrontational player has; folding it into soften erased two endings). */
+const CORE6 = ["agree","soften","ritual","deflect","passive","confront"];
+const MERGE = {dumb:"deflect"};
+const SITU  = ["victim","joke","scapegoat","ally"];
+/* One line per course, shown once, as forewarning. Tension you can see coming
+   beats tension that feels random. */
+const COURSE_SUB = {
+  1:{en:"Cold dishes. Everyone is still being careful.", zh:"冷盘。所有人还在小心。"},
+  2:{en:"The interrogation — she just wants to know you're okay. Her way.", zh:"盘问——她只是想知道你过得好不好。用她的方式。"},
+  3:{en:"The comparison. Someone's child is always doing better.", zh:"比较。别人家的孩子总是更好。"},
+  4:{en:"The toast. Stand up and prove you still belong here.", zh:"敬酒。站起来，证明你还是这里的人。"},
+  5:{en:"The air outside. One hallway, one choice.", zh:"门外。一条走廊，只能去一个地方。"},
+  6:{en:"The old score. Tonight it gets opened.", zh:"旧账。今晚，总有一本要翻开。"},
+  7:{en:"The future — the part of the evening where they ask about yours.", zh:"未来——他们开始问你的那部分。"},
+  8:{en:"The door. One last sentence, then the stairs.", zh:"门口。最后一句，然后是楼道。"}
+};
+/* Year 2+: a run-level build decision. Small nudges, big route divergence. */
+const MINDSETS = [
+ {id:"good", en:"To keep the peace", zh:"今年要好好过",
+  d:{en:"FILIAL +10 · the unsaid holds two more before it spills", zh:"孝 +10 · 未说能多攒两句才漏"},
+  fx(s){ s.filial = clamp(s.filial+10,0,100); s.leakAt += 2; s.floodAt += 2; }},
+ {id:"done", en:"That you're done", zh:"今年受够了",
+  d:{en:"SELF +10 · STRESS +15 — you arrive already lit", zh:"真我 +10 · 压力 +15——进门时火已经点着"},
+  fx(s){ s.self = clamp(s.self+10,0,100); s.stress = clamp(s.stress+15,0,100); }},
+ {id:"see", en:"To actually see them", zh:"今年想看看他们",
+  d:{en:"Three buried secrets glint on the web · FACE −5", zh:"三个埋着的秘密在网上闪了一下 · 面子 −5"},
+  fx(s){ s.face = clamp(s.face-5,0,100);
+    s.secretHint = shuffle(Object.keys(ESCAPES)).slice(0,3); }}
+];
+/* The beat after you speak: one human, non-system reaction per person per
+   stance family (warm / edge / avoid). 8 × 3 × 3. */
+const REACT = {
+mom:{
+ warm:[{en:"Your mother doesn't answer. She puts a piece of fish in your bowl.",zh:"你妈没接话，给你夹了一筷子鱼。"},
+       {en:"She looks at you a second longer than usual, then looks away.",zh:"她多看了你一秒，然后移开了。"},
+       {en:"\u201cEat more,\u201d she says. It is not about the food.",zh:"「多吃点。」她说。不是菜的事。"}],
+ edge:[{en:"The chopsticks stop, halfway to the bowl. Then they keep going.",zh:"筷子在碗上方停了一下。然后继续。"},
+       {en:"She wipes her hands on her apron, very slowly.",zh:"她在围裙上擦手，擦得很慢。"},
+       {en:"\u201cYou've grown up,\u201d she says. It does not sound like praise.",zh:"「长大了。」她说。听着不像夸你。"}],
+ avoid:[{en:"She fills the silence by asking if the rice is enough.",zh:"她用「饭够不够」把沉默填上。"},
+       {en:"She looks at your bowl, not at you.",zh:"她看着你的碗，不看你。"},
+       {en:"The TV gets one notch louder. Nobody touched the remote.",zh:"电视响了一格。没人碰遥控器。"}]},
+dad:{
+ warm:[{en:"Your father grunts — the good grunt — and reaches for the bottle.",zh:"你爸「嗯」了一声，是好的那种「嗯」，伸手去够酒瓶。"},
+       {en:"He nods at his glass. That's a whole sentence, for him.",zh:"他冲自己的杯子点了点头。对他来说，这算一整句话。"},
+       {en:"\u201cMm.\u201d He almost smiles. Almost.",zh:"「嗯。」他差点笑了。差点。"}],
+ edge:[{en:"He puts the glass down without drinking. The room notices.",zh:"他把杯子放下了，没喝。一桌子都注意到了。"},
+       {en:"\u201cEat your food,\u201d he says, to nobody in particular.",zh:"「吃饭。」他说，没冲着谁。"},
+       {en:"He turns to watch the TV. The volume was fine.",zh:"他转头去看电视。音量明明没问题。"}],
+ avoid:[{en:"He seems relieved you didn't push it.",zh:"他像是松了口气：你没追着说。"},
+       {en:"He lights the silence like a cigarette — lets it burn.",zh:"他让沉默待着，像点了一根烟。"},
+       {en:"\u201cMore wine?\u201d he asks the table. The table says yes.",zh:"「再喝点？」他问全桌。全桌说要。"}]},
+nai:{
+ warm:[{en:"Grandma pats your hand twice. Her hands are cold.",zh:"奶奶拍了拍你的手，两下。她的手是凉的。"},
+       {en:"\u201cGood child,\u201d she says, like it's still 2009.",zh:"「好孩子。」她说，好像现在还是 2009 年。"},
+       {en:"She tries to peel another orange for you.",zh:"她又要给你剥一个橘子。"}],
+ edge:[{en:"She goes quiet. The whole table goes quiet with her.",zh:"她不作声了。全桌跟着不作声。"},
+       {en:"She looks at your mother. Your mother looks at her plate.",zh:"她看了你妈一眼。你妈看着自己的盘子。"},
+       {en:"\u201cYou've changed,\u201d she says, and returns to her soup.",zh:"「变了。」她说完，低头喝汤。"}],
+ avoid:[{en:"She didn't quite hear, and decides that's fine.",zh:"她没太听清，决定这样也好。"},
+       {en:"She starts a story about the old house. Nobody stops her.",zh:"她开始讲老房子的事。没人拦。"},
+       {en:"She smiles at you anyway, a little unsure why.",zh:"她还是冲你笑了笑，不太确定为什么。"}]},
+aunt2:{
+ warm:[{en:"Your auntie's smile reaches her eyes for once.",zh:"你二姨笑了一笑，这回笑到了眼睛里。"},
+       {en:"\u201cThis child knows how to talk,\u201d she announces to the table.",zh:"「这孩子会说话。」她向全桌宣布。"},
+       {en:"She actually puts her phone down.",zh:"她居然把手机放下了。"}],
+ edge:[{en:"She laughs — one note. Which kind of laugh is unclear.",zh:"她笑了一声，一声。分不清是哪种笑。"},
+       {en:"\u201cOh?\u201d she says, and files this away for later.",zh:"「哦？」她说，然后把这句存了起来。"},
+       {en:"Her chopsticks make a small, precise sound on the plate.",zh:"她的筷子在盘子上碰出一声很小、很准的响。"}],
+ avoid:[{en:"She moves on to your cousin's grades within seconds.",zh:"不出三秒，她转去问表妹的成绩。"},
+       {en:"She decides she won that round and lets it go.",zh:"她判定这局她赢了，于是放过。"},
+       {en:"\u201cKids these days,\u201d she sighs, without rancor.",zh:"「现在的孩子啊。」她叹气，不带恶意。"}]},
+uncle:{
+ warm:[{en:"Your uncle slaps the table. \u201cGood! Drink!\u201d",zh:"你大舅一拍桌子：「好！喝！」"},
+       {en:"He refills your glass before you can refuse.",zh:"他抢在你推辞之前把酒满上了。"},
+       {en:"\u201cNow that's a proper answer,\u201d he booms.",zh:"「这话像样。」他声如洪钟。"}],
+ edge:[{en:"His smile stays. The warmth leaves it.",zh:"他的笑还在，温度不在了。"},
+       {en:"He turns the wine bottle slowly, reading the label that isn't there.",zh:"他慢慢转着酒瓶，读一张不存在的标签。"},
+       {en:"\u201cYoung people have ideas now,\u201d he tells the ceiling.",zh:"「年轻人有想法了。」他对着天花板说。"}],
+ avoid:[{en:"He gladly takes the exit and starts a story about fish.",zh:"他欣然借坡下，开始讲一段关于鱼的故事。"},
+       {en:"He uses the pause to toast your grandfather's photo.",zh:"他借这个空当，敬了爷爷的照片一杯。"},
+       {en:"\u201cEat, eat,\u201d he says, moving the whole table along.",zh:"「吃吃吃。」他招呼全桌翻页。"}]},
+cous:{
+ warm:[{en:"Your cousin kicks you lightly under the table. Approval.",zh:"表妹在桌子底下轻轻踢了你一下。表示认可。"},
+       {en:"She slides one earbud an inch closer to you.",zh:"她把一只耳机往你这边推了一寸。"},
+       {en:"She looks up from her phone. That's rare.",zh:"她从手机上抬起头。这很少见。"}],
+ edge:[{en:"She exhales through her nose — her version of applause.",zh:"她从鼻子里出了口气——这是她的鼓掌。"},
+       {en:"\u201cDamn,\u201d she whispers, impressed.",zh:"「我去。」她小声说，带着敬意。"},
+       {en:"She types something. You suspect it's about this.",zh:"她打了几个字。你怀疑与这事有关。"}],
+ avoid:[{en:"She shrugs, already back in her feed.",zh:"她耸耸肩，人已经回到信息流里。"},
+       {en:"\u201cFair,\u201d she says, to no one.",zh:"「也行。」她对着空气说。"},
+       {en:"She doesn't look up, but she's listening.",zh:"她没抬头，但她在听。"}]},
+gu:{
+ warm:[{en:"Aunt Gu nods, filing this under 'evidence, positive'.",zh:"姑妈点点头，把这句归入「正面材料」。"},
+       {en:"\u201cI always said this one was the sensible one,\u201d she tells the room.",zh:"「我就说这孩子懂事。」她对全屋说。"},
+       {en:"She offers you the good plate of fruit.",zh:"她把那盘好的水果往你这边推。"}],
+ edge:[{en:"She removes her glasses and cleans them. Slowly.",zh:"她摘下眼镜擦了擦。很慢。"},
+       {en:"\u201cIs that so,\u201d she says flatly. It is not a question.",zh:"「是吗。」她平平地说。不是问句。"},
+       {en:"She exchanges a look with your uncle that has a whole appendix.",zh:"她跟你大舅交换了一个眼神——带附录的那种。"}],
+ avoid:[{en:"She redirects the table to the soup before it curdles.",zh:"她赶在话馊掉之前把话题引去了汤。"},
+       {en:"She lets it pass, but you see her count it.",zh:"她放过了这句，但你看见她记了一笔。"},
+       {en:"\u201cEveryone eat while it's hot,\u201d she rules.",zh:"「都趁热吃。」她裁定。"}]},
+out:{
+ warm:[{en:"The girlfriend smiles at you, grateful for an ally at this table.",zh:"表哥女友冲你笑了笑——在这张桌上多个盟友，她很感激。"},
+       {en:"\u201cThat's so nice,\u201d she says, meaning it.",zh:"「真好。」她说，是真心的。"},
+       {en:"She relaxes visibly, shoulders dropping an inch.",zh:"她明显松弛下来，肩膀落了一寸。"}],
+ edge:[{en:"Her smile holds perfectly still. She practiced it.",zh:"她的笑纹丝不动。练过。"},
+       {en:"She glances at her boyfriend: is this normal here?",zh:"她看了男朋友一眼：这在这儿算正常吗？"},
+       {en:"She finds the peanuts suddenly fascinating.",zh:"她突然觉得那盘花生非常有趣。"}],
+ avoid:[{en:"She follows the subject change with visible relief.",zh:"她如释重负地跟上了新话题。"},
+       {en:"She nods along, happy not to be the topic.",zh:"她附和着点头，庆幸话题不是自己。"},
+       {en:"She quietly tops up your tea.",zh:"她悄悄给你续了茶。"}]}
+};
+/* Which REACT family a verb lands in. */
+function reactGroup(v){
+  if(["agree","soften","victim","ritual","joke"].indexOf(v)>=0) return "warm";
+  if(["confront","passive","scapegoat","unsaid"].indexOf(v)>=0) return "edge";
+  return "avoid";
+}
+/* Four sounds, all synthesised — no assets, no dependencies. */
+function sfx(kind){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    const ctx = sfx._c || (sfx._c = new AC());
+    if(ctx.state === "suspended") ctx.resume();
+    const t0 = ctx.currentTime, g = ctx.createGain(); g.connect(ctx.destination);
+    const osc = (type,f0,f1,t,vol)=>{
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(f0,t0);
+      if(f1) o.frequency.exponentialRampToValueAtTime(f1,t0+t);
+      og.gain.setValueAtTime(vol,t0); og.gain.exponentialRampToValueAtTime(0.0001,t0+t);
+      o.connect(og); og.connect(ctx.destination); o.start(t0); o.stop(t0+t);
+    };
+    const noise = (dur,f,vol)=>{
+      const b = ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate), d = b.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+      const n = ctx.createBufferSource(); n.buffer = b;
+      const bp = ctx.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=f; bp.Q.value=1.2;
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(vol,t0); ng.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+      n.connect(bp); bp.connect(ng); ng.connect(ctx.destination); n.start(t0);
+    };
+    if(kind==="tap"){ noise(0.06,2400,0.12); osc("sine",880,660,0.07,0.05); }
+    else if(kind==="hush"){ osc("sine",220,110,0.5,0.1); noise(0.3,500,0.04); }
+    else if(kind==="scrape"){ noise(0.7,900,0.1); osc("sawtooth",140,70,0.7,0.05); }
+    else if(kind==="tv"){ noise(1.2,3200,0.06); osc("sine",60,55,1.2,0.05); }
+  }catch(e){}
+}
 /* Option hotkeys — also the vote-row labels in classroom mode. */
 const KEYS = "ABCDEF";
 
@@ -1321,7 +1516,10 @@ k6:{en:"A month before Grandpa died, Mom and Grandma had a fight about who would
 /* ---- ENDINGS ---- */
 const ENDINGS = [
 {id:"flatline", n:{en:"FLATLINE", zh:"抢救失败"}, rare:false,
- cond:s=>s.stress>=100&&(s.face<=0||s.self<=0||s.filial<=0),
+ // v2.1: razor edge -> red zone. Was "stress 100 in the same instant another
+ // meter hits 0" (numerically near-impossible: 1 in 4000 random runs). Now any
+ // meter in the red while pressure is critical will do.
+ cond:s=>s.stress>=95&&(s.face<=18||s.self<=18||s.filial<=18),
  t:{en:"Both numbers hit the floor in the same second. Somebody turns the TV up.",
     zh:"两个数字在同一秒落地。有人把电视调大了。"},
  q:{en:"Nobody at this table will ever describe what happened tonight. Not to anyone.",
@@ -1342,7 +1540,7 @@ const ENDINGS = [
     zh:"它明年还在。它会更重。"}},
 
 {id:"ledgerRefused", n:{en:"MOM'S LEDGER \u2014 HANDED BACK", zh:"妈妈的账本 · 退回"}, rare:false,
- cond:s=>s.reckoning==="refuse"&&s.self>=55,
+ cond:s=>s.reckoning==="refuse"&&s.self>=65,
  t:{en:"You pushed the phone back across the table. It is not that you don't love her.",
     zh:"你把手机推回桌子对面。不是你不爱她。"},
  q:{en:"It's that you will not be a debt. She is quiet for the rest of the evening.",
@@ -1386,7 +1584,10 @@ const ENDINGS = [
     zh:"你用了你妈的那句话。你用你妈的声音说了出来。"}},
 
 {id:"outsider", n:{en:"THE OUTSIDER", zh:"外人"}, rare:false,
- cond:s=>s.secrets>=3&&s.unsaid>=8,
+ // v2.1: "You said NONE of it" — if the dam ever broke, you are not the
+ // outsider, you are something louder. (Also unsaid 8 -> 10: this ending must
+ // be engineered, not fallen into.)
+ cond:s=>s.secrets>=3&&s.unsaid>=9&&!s.flooded,
  t:{en:"You know about the medication. The layoff. The drawing. You said none of it.",
     zh:"你知道药的事。裁员的事。那张画。你一句都没说。"},
  q:{en:"You understand this family better than anyone alive. And you are still a guest here.",
@@ -1514,6 +1715,8 @@ function newRun(){
     npc:{}, ledger:{}, secrets:{}, found:[], keepsakes:META.keepsakes.slice(),
     flooded:false, silenceAfterFlood:false, reckoning:null, momSecret:false,
     lectured:false, hardened:{}, history:[], noticeQueue:[], escChoice:null, lastCoda:null, clock:18*60+30,
+    leakSeen:false, swallowed:false, specialLocked:false, subShown:null,
+    secretHint:null, mindset:null, leakAt:5, floodAt:10,
     deck, oldscores:os, deckIdx:0, osIdx:0, drawn:[],
     step:0, schedule:buildSchedule(), lastCourse:0,
     hits:{agree:0,confront:0,silence:0}
@@ -1532,7 +1735,7 @@ function buildSchedule(){
   push("node",{id:"arrive",c:1});
   push("node",{id:"orange",c:1});
   push("draw",{c:2}); push("draw",{c:2}); push("node",{id:"followup",c:2});
-  push("draw",{c:3}); push("node",{id:"xiaochen",c:3}); push("draw",{c:3});
+  push("draw",{c:3}); push("node",{id:"xiaochen",c:3});
   push("node",{id:"toast",c:4});
   push("node",{id:"escape",c:5});
   push("node",{id:"oldscore",c:6});
@@ -1597,7 +1800,7 @@ function applyRipples(npcId){
       if(tid==="*"){ for(const id in NPCS) S.npc[id].favor = clamp(S.npc[id].favor+d,0,100); }
       else S.npc[tid].favor = clamp(S.npc[tid].favor+d,0,100);
     }
-    log.push(say(r));
+    log.push(r);
   }
   return log;
 }
@@ -1647,7 +1850,10 @@ function resolveEnding(){
    stayed in the family, stayed themselves, and said the unspeakable once. */
 function wheelEarned(){
   const open = wheelGateOpen(META.runs+1) || PRES_UNLOCK;
-  return open && S.self>=60 && S.filial>=55 && S.flooded && S.stress<100 && S.face>0;
+  // v2.1: tightened. Random veteran play hit this 30% of the time — the rarest
+  // ending was the second most common door. Now it asks for real discipline:
+  // you said it once, and you are still standing, and so is the family.
+  return open && S.self>=70 && S.filial>=65 && S.flooded && S.stress<75 && S.face>40;
 }
 
 /* =======================================================================
@@ -1707,11 +1913,20 @@ function renderSide(){
 
   $("web").innerHTML = Object.keys(NPCS).map(id=>{
     const n=S.npc[id], known = S.found.some(k=>SECRET_OWNER[k]===id);
-    return `<div class="wn"><span class="dot ${known?'k':(n.favor>=70?'hi':'')}"></span>
+    const hinted = !known && (S.secretHint||[]).some(k=>SECRET_OWNER[k]===id);
+    return `<div class="wn"><span class="dot ${known?'k':(hinted?'hk':(n.favor>=70?'hi':''))}"></span>
       <span class="nm2">${npcName(id)}</span>
       <span class="bar"><i style="width:${n.favor}%"></i></span>
       <span class="cl">${"★".repeat(NPCS[id].clout)}</span></div>`;
   }).join("");
+
+  /* the room telegraphs what the numbers haven't said yet */
+  const app = document.querySelector(".app");
+  if(app && app.classList){
+    app.classList.toggle("strain", S.stress>=60);
+    app.classList.toggle("leaksoon", S.unsaid>=7 && !S.flooded);
+    app.classList.toggle("fxc", HINTS && META.runs>=1);
+  }
 
   const ks = S.keepsakes;
   $("keeps").innerHTML = ks.length
@@ -1791,8 +2006,11 @@ function hasKeepsake(k){ return (META.keepsakes||[]).indexOf(k)>=0; }
 function noticesHTML(){
   const n = (S && S.noticeQueue) || [];
   if(!n.length) return "";
+  // Notices are localized AT RENDER TIME (not when raised), so pressing L
+  // mid-evening re-reads them in the new language like everything else.
+  const txt = x => x.r ? (LANG==="zh"?x.r.zh:x.r.en) : x.k ? t(x.k) : x.text;
   return `<div class="notices">` +
-    n.map(x=>`<div class="${x.bad?'bad':''}">▸ ${x.text}</div>`).join("") + `</div>`;
+    n.map(x=>`<div class="${x.bad?'bad':(x.react?'react':'')}">${x.react?"—":"▸"} ${txt(x)}</div>`).join("") + `</div>`;
 }
 
 /* If anything throws after boot, show a page with a way out instead of a blank
@@ -1830,7 +2048,7 @@ function applyReveals(node){
     revealedNow.push(rev);
     if(MOM_OPENS_UP.indexOf(rev)>=0) S.momSecret = true;
     META.secrets = Array.from(new Set(META.secrets.concat([rev])));
-    S.self = clamp(S.self+4,0,100); S.stress = clamp(S.stress-5,0,100);
+    S.self = clamp(S.self+2,0,100); S.stress = clamp(S.stress-5,0,100);
   });
   if(node.id==="os_art") S.momSecret = true;
   // "Mom's exam permit" is tied to learning who your mother was, not to an
@@ -1847,9 +2065,38 @@ function applyReveals(node){
 function optLocked(op, isUnsaid, unsaidOK){
   // A keepsake option is exempt from Hardening: owning the tin gives you a way
   // back to your father that your own habits cannot take away.
-  return (isUnsaid && !unsaidOK && !op.need) || (hardenedOut(op.v) && !op.needK) ||
+  return (isUnsaid && (!unsaidOK || S.specialLocked) && !op.need) || (hardenedOut(op.v) && !op.needK) ||
          (op.needK && !hasKeepsake(op.needK)) ||
          (op.need && (!op.need.secret || !op.need.secret.some(k=>S.found.indexOf(k)>=0)));
+}
+/* v2: collapse the 13-verb menu into 6 core stances + ≤2 situational moves +
+   specials (keepsake / secret / branch / unsaid lines always keep their verb).
+   Merged verbs execute as the verb they folded into — only the label changes.
+   Returns display entries {op, v, sit} in slot order. */
+function displayOpts(rawOpts, npcId){
+  const seen = {}, core = [], sit = [], spec = [];
+  rawOpts.forEach(op=>{
+    if(op.go || op.need || op.needK || op.coda || op.lect || op.v==="unsaid"){
+      spec.push({op, v:op.v, sit:false}); return;
+    }
+    const v = MERGE[op.v] || op.v;
+    if(SITU.indexOf(v)>=0){ sit.push({op, v, sit:true}); return; }
+    if(seen[v]) return; seen[v] = 1;
+    core.push({op, v, sit:false});
+  });
+  sit.sort((a,b)=>multFor(b.v,npcId)-multFor(a.v,npcId));
+  return core.concat(sit.slice(0,2)).concat(spec);
+}
+/* The tag on a situational option, and on a merged victim line: "she is weak
+   to this" turns the hidden multiplier matrix into something you can feel. */
+function optTag(d, npcId){
+  let name = verbName(d.v);
+  if(d.op.v==="victim" && (npcId==="aunt2"||npcId==="cous")) name = verbName("victim");
+  // v2.1: the tag is training wheels, not a permanent answer key. It shows in
+  // your first year (META.runs<1) or whenever Hints are on — after that the
+  // slots are still sorted, but reading people is your own skill again.
+  if(d.sit && multFor(d.v,npcId)>=1.2 && (META.runs<1 || HINTS)) name += `<b class="sittag">${t("sitTag")}</b>`;
+  return name;
 }
 
 function renderNode(node, ctx){
@@ -1872,16 +2119,28 @@ function renderNode(node, ctx){
       ? `<div class="sub"><span>EN ›</span><span class="en">\u201c${enLine}\u201d</span>${badge}</div>`
       : `<div class="sub"><span>${layerName}</span>${badge}</div>`;
 
-  let opts = (o.opts||[]).slice();
+  const disp = displayOpts((o.opts||[]).slice(), npcId);
   let leakIdx = -1;
-  if(S.unsaid>=5 && S.unsaid<10 && !node.special){
-    leakIdx = opts.findIndex(x=>x.v==="agree" && !x.need);
+  if(S.unsaid>=S.leakAt && S.unsaid<S.floodAt && !node.special){
+    leakIdx = disp.findIndex(x=>x.v==="agree" && !x.op.need);
   }
   const unsaidOK = S.unsaid>=6 || S.stress>=70;
   const revealedNow = applyReveals(node);
 
+  /* course slate: one italic line of forewarning, once per course */
+  let csub = "";
+  {
+    let cc = node.c;
+    if(Array.isArray(cc)) cc = (S.schedule[S.step] && S.schedule[S.step].c) || cc[0];
+    cc = cc || (S.schedule[S.step] && S.schedule[S.step].c) || 1;
+    if(COURSE_SUB[cc] && cc !== S.subShown){ S.subShown = cc;
+      csub = `<div class="csub">${t("course")[cc]} —— ${say(COURSE_SUB[cc])}</div>`;
+    }
+  }
+
   let html = `<div class="scene flash">
     <div class="spk"><span class="who${npcId?"":" narr"}">${speaker}</span></div>
+    ${csub}
     <div class="line ${LANG==='zh'?'zh':''}">${lineMain}</div>
     ${subLine}
     ${noticesHTML()}
@@ -1892,31 +2151,42 @@ function renderNode(node, ctx){
     <div class="divider"></div>`;
 
   if(node.special==="flood"){
-    html += `<div class="qh">${t("sayIt")}</div>
-      <div class="opts"><button class="opt special" data-i="0" data-v="unsaid">
-        <span class="k">↵</span><span class="txt"><span class="v">${verbName("unsaid")}</span>
-        <span class="l">${LANG==="zh"?"「那你当时为什么不让我去？」":"“Then why didn't you let me go?”"}</span>
-        <span class="fx">${fxText("unsaid", node, npcId)}</span></span></button></div></div>`;
-    MAIN.innerHTML = html; bindOpts([{v:"unsaid",flood:true}]);
+    const opts2 = [{v:"unsaid", flood:true}];
+    if(!S.swallowed) opts2.push({v:"silence", swallow:true});
+    html += `<div class="qh">${t("sayIt")}</div><div class="opts">` +
+      opts2.map((x,i)=>{
+        if(x.flood) return `<button class="opt special" data-i="${i}" data-v="unsaid">
+          <span class="k">↵</span><span class="txt"><span class="v">${verbName("unsaid")}</span>
+          <span class="l">${LANG==="zh"?"「那你当时为什么不让我去？」":"“Then why didn't you let me go?”"}</span>
+          <span class="fx">${fxText("unsaid", node, npcId)}</span></span></button>`;
+        return `<button class="opt" data-i="${i}" data-v="silence">
+          <span class="k">S</span><span class="txt"><span class="v">${t("swallow")}</span>
+          <span class="l">${LANG==="zh"?"把它咽回去。和往年一样。":"Swallow it. Like every other year."}</span>
+          <span class="fx">${fxArrows({stress:12})}</span></span></button>`;
+      }).join("") + `</div>`;
+    MAIN.innerHTML = html; bindOpts(opts2);
     renderSide(); renderCourse(node); renderChrome(); MAIN.scrollTop = 0;
     return;
   }
 
   html += `<div class="qh">${o.q? say(o.q) : t("whatSay")}</div><div class="opts">`;
-  opts.forEach((op,i)=>{
+  disp.forEach((d,i)=>{
     const isLeak = (i===leakIdx);
-    const isUnsaid = op.v==="unsaid";
-    const locked = optLocked(op, isUnsaid, unsaidOK);
-    const showV = isLeak ? verbName("agree") : verbName(op.v);
-    html += `<button class="opt ${isUnsaid?'special':''}" data-i="${i}" data-v="${isLeak?'passive':op.v}" ${locked?"disabled":""}>
+    const isUnsaid = d.v==="unsaid";
+    const locked = optLocked(d.op, isUnsaid, unsaidOK);
+    const tremor = !isLeak && d.v==="agree" && !node.special && S.leakSeen &&
+                   S.unsaid>=S.leakAt && S.unsaid<S.floodAt;
+    const misq = conf!==undefined && conf<60 && WARM_VERBS.indexOf(d.v)>=0 && !isLeak;
+    const cls = ["opt", isUnsaid&&"special", d.sit&&"sit", tremor&&"tremor"].filter(Boolean).join(" ");
+    html += `<button class="${cls}" data-i="${i}" data-v="${isLeak?'passive':d.v}" ${locked?"disabled":""}>
       <span class="k">${KEYS[i]}</span>
-      <span class="txt"><span class="v">${showV}</span>
-      <span class="l">${say(op)}</span>
-      <span class="fx">${isLeak?fxTextSimple("agree"):fxText(op.v, node, npcId)}</span></span></button>`;
+      <span class="txt"><span class="v">${isLeak?verbName("agree"):optTag(d, npcId)}${misq?`<b class="misq" title="${t("misq")}">?</b>`:""}</span>
+      <span class="l">${say(d.op)}</span>
+      <span class="fx">${isLeak?fxTextSimple("agree"):fxText(d.v, node, npcId)}</span></span></button>`;
   });
   html += `</div>`;
 
-  if(PRES) html += votePanelHTML(opts);
+  if(PRES) html += votePanelHTML(disp);
 
   if(inner){
     html += `<div class="inner"><div class="hd"><div class="t">${t("inner")}</div>
@@ -1928,7 +2198,7 @@ function renderNode(node, ctx){
   MAIN.innerHTML = html;
   const all = Array.from(MAIN.querySelectorAll(".opt"));
   if(all.length && all.every(b=>b.disabled)) all[0].disabled = false; // never dead-end
-  bindOpts(opts, leakIdx);
+  bindOpts(disp, leakIdx);
   renderSide();
   renderCourse(node);
   renderChrome();
@@ -1968,34 +2238,51 @@ function reckonHTML(){
     </div>`;
 }
 
-function bindOpts(opts, leakIdx){
+function bindOpts(disp, leakIdx){
   MAIN.querySelectorAll(".opt").forEach(btn=>{
     btn.onclick = ()=>{
       const i = +btn.dataset.i;
-      if(opts.length===1 && opts[0].flood){ doFlood(); return; }
-      const op = opts[i];
+      const d = disp[i];
+      if(d && d.flood){ doFlood(); return; }
+      if(d && d.swallow){ doSwallow(); return; }
+      const op = (d && d.op) || d;
       if(op && op.go){                       // branch within the same schedule slot
         S.clock += 10;
         S.escChoice = op.go;
         const tgt = SPINE[op.go];
         if(tgt) return renderNode(tgt, {});
       }
-      choose(op, i===leakIdx, opts);
+      choose(op, i===leakIdx, d ? d.v : undefined);
     };
   });
 }
 
 /* ---- choose ---- */
-function choose(op, wasLeak, opts){
+function choose(op, wasLeak, v){
   const node = cur.node;
-  let verb = wasLeak ? "passive" : op.v;
+  let verb = wasLeak ? "passive" : (v || op.v);
   const npcId = (cur.ctx&&cur.ctx.npc) || (typeof node.npc==="string" ? node.npc : null);
   const notices = [];
   let extraFavor = 0;
   S.noticeQueue = [];
 
+  sfx(reactGroup(verb)==="edge" ? "hush" : "tap");
+  /* the human beat: one non-system reaction from whoever you just answered */
+  if(npcId && REACT[npcId]){
+    notices.push({r:pick(REACT[npcId][reactGroup(verb)]), react:true});
+  }
+
   if(node.special==="reckoning"){
-    S.reckoning = (verb==="agree"||verb==="dumb") ? "take" : "refuse";
+    // v2.1: three-way reading of the ledger scene. Smooth acceptance (agree /
+    // ritual / deflect) carries it; active pushback (confront / passive /
+    // unsaid) hands it back; everything in between (silence, a joke, playing
+    // the victim) is NEITHER — the evening moves on. Before this, any non-AGREE
+    // click counted as "refuse", which made HANDED BACK the default ending for
+    // nearly half of all random runs. ("dumb" was also dead code here — it has
+    // executed as deflect since v2.0.)
+    S.reckoning = (verb==="agree"||verb==="ritual"||verb==="deflect") ? "take"
+                : (verb==="confront"||verb==="passive"||verb==="unsaid") ? "refuse"
+                : S.reckoning;
   }
   if(op.lect) S.lectured = true;
 
@@ -2020,7 +2307,7 @@ function choose(op, wasLeak, opts){
     if(rnd(100) < 50){
       for(const k in delta) if(delta[k]>0) delta[k] = Math.max(1, Math.round(delta[k]*0.5));
       extraFavor -= 6;
-      notices.push({text:t("misread"), bad:true});
+      notices.push({k:"misread", bad:true});
     }
   }
 
@@ -2036,7 +2323,7 @@ function choose(op, wasLeak, opts){
       }
       delta.stress = (delta.stress||0) + 6;
       extraFavor -= 8;
-      notices.push({text:(LANG==="zh"?"话没接住。":"It didn't land."), bad:true});
+      notices.push({r:{en:"It didn't land.", zh:"话没接住。"}, bad:true});
     }
   }
 
@@ -2046,7 +2333,7 @@ function choose(op, wasLeak, opts){
     const base = FAVOR_BASE[verb]||0;
     S.npc[npcId].favor = clamp(S.npc[npcId].favor + base + extraFavor, 0, 100);
     // ripples are surfaced to the player now — the web is not a hidden system
-    applyRipples(npcId).forEach(txt => notices.push({text:txt}));
+    applyRipples(npcId).forEach(r => notices.push({r}));
   }
   if(verb==="ally"){
     const others = Object.keys(NPCS).filter(x=>x!==npcId);
@@ -2073,7 +2360,9 @@ function choose(op, wasLeak, opts){
   if(op.coda) S.lastCoda = op.coda;
   // The leak is silent while you choose, and revealed right after: the point is
   // that you could not control what came out, not that the button warned you.
-  if(wasLeak) notices.push({text:t("leakNote"), bad:true});
+  // Except the FIRST time: one visible omen, then every AGREE trembles forever.
+  if(wasLeak && !S.leakSeen){ S.leakSeen = true; notices.push({k:"leakFirst", bad:true}); }
+  if(wasLeak) notices.push({k:"leakNote", bad:true});
   S.noticeQueue = notices;
 
   S.clock += 8 + rnd(9);
@@ -2083,6 +2372,7 @@ function choose(op, wasLeak, opts){
 
 function doFlood(){
   S.flooded = true;
+  sfx("scrape");
   applyDelta({face:-8,filial:-10,self:15,stress:-20,unsaid:-S.unsaid});
   S.history.push("flood");
   // NOTE: no S.step++ here. The flood is rendered *in place of* nothing —
@@ -2090,11 +2380,31 @@ function doFlood(){
   // silently ate the next scene (an entire course, or the Reckoning).
   advance();
 }
+/* Once per evening the flood offers a way back down. It is not free: +12
+   stress, and the special slot (the unsaid) stays locked for the rest of the
+   night. Swallowing turns the flood from a system event into a decision. */
+function doSwallow(){
+  S.swallowed = true; S.specialLocked = true;
+  applyDelta({stress:12, unsaid:-4});
+  S.history.push("swallow");
+  advance();
+}
 
 function advance(){
-  if(S.stress>=100 || S.face<=0 || S.self<=0){ return showEnding(); }
+  // v2.1: stress has its own death now. The moment pressure hits 100 the
+  // evening ends ON THE SPOT as THE FLIP — it no longer queues up behind the
+  // other meters' endings (SEVERANCE used to steal 99.7% of max-stress runs).
+  if(S.stress>=100){ return showEnding("flip"); }
+  if(S.face<=0 || S.self<=0){
+    // v2.1: when a meter dies while pressure is critical, pressure was the
+    // killer — THE FLIP, not whoever the meter belonged to. In the 95+ band
+    // the double-kill reads as FLATLINE instead (red zone, see ENDINGS).
+    if(S.stress>=95) return showEnding("flatline");
+    if(S.stress>=85) return showEnding("flip");
+    return showEnding();
+  }
   // flood injection
-  if(!S.flooded && S.unsaid>=10){
+  if(!S.flooded && S.unsaid>=S.floodAt){
     return renderNode(SPINE.flood, {});
   }
   while(S.step < S.schedule.length){
@@ -2111,7 +2421,7 @@ function advance(){
       S.stress = clamp(S.stress + bill, 0, 100);
       S.fatigue = clamp(S.fatigue + 1, 0, 100);
       S.lastCourse = cc;
-      if(S.stress>=100) return showEnding();
+      if(S.stress>=100) return showEnding("flip");
     }
     if(st.t==="node"){
       if(st.id==="reckoning"){
@@ -2155,8 +2465,10 @@ function advance(){
 }
 
 /* ---- ending ---- */
-function showEnding(){
-  const e = wheelEarned() ? ENDINGS.find(x=>x.id==="wheel") : resolveEnding();
+function showEnding(forceId){
+  const e = forceId ? ENDINGS.find(x=>x.id===forceId)
+                    : (wheelEarned() ? ENDINGS.find(x=>x.id==="wheel") : resolveEnding());
+  sfx("tv");
   let unlocked = null;
   META.runs++;
   if(!META.endings.includes(e.id)) META.endings.push(e.id);
@@ -2284,6 +2596,9 @@ function wheelBlock(){  return `<div style="border:1px solid var(--line);border-
 /* ---- screens ---- */
 function title(){
   RESHOW = "title";
+  // The evening is over — the header must not keep wearing its last course
+  // and clock into the menu.
+  $("course").textContent = ""; $("clock").textContent = "";
   OV.innerHTML = `<div class="card flash">
     <h1>UNSAID</h1>
     <h2>${LANG==="zh"?"东亚家庭模拟器":"An East Asian Family Simulator"}</h2>
@@ -2359,8 +2674,33 @@ function startRun(isPres){
     RESHOW = null;
     renderChrome(); renderSide();
     S.step = 0;
+    // Year 2+: pick what you carry through the door before the evening starts.
+    if(!PRES && META.runs>=1){ showMindset(); return; }
     advance();
   }catch(err){ showBootError(err); }
+}
+
+function showMindset(){
+  RESHOW = "mind";
+  OV.innerHTML = `<div class="card flash">
+    <h2>${t("mindTitle")}</h2>
+    <div class="mind-sub">${LANG==="zh"?"选一样，带进这个家门。":"Pick one thing to carry through the door."}</div>
+    <div class="menu">${MINDSETS.map((m,i)=>
+      `<button class="mi mindb" id="mind${i}">${say(m)}<div class="mind-d">${say(m.d)}</div></button>`).join("")}
+    </div>
+    <div class="auth">${LANG==="zh"?"作者 ":"by "}<b>26药3 lyx</b></div>
+  </div>`;
+  OV.style.display = "flex";
+  MINDSETS.forEach((m,i)=>{ $("mind"+i).onclick = ()=>applyMindset(i); });
+}
+function applyMindset(i){
+  const m = MINDSETS[i]; if(!m) return;
+  S.mindset = m.id;
+  m.fx(S);
+  OV.style.display="none"; OV.innerHTML=""; RESHOW = null;
+  renderSide();
+  S.step = 0;
+  advance();
 }
 
 /* =======================================================================
@@ -2382,8 +2722,8 @@ const TUT = [
     zh:"面子、孝、真我、压力、未说。每一项都怕两头：耗尽，或者过满。没有安全的数字，只有你还付得起的数字。"}},
 
 {t:{en:"How to answer", zh:"怎么接话"}, demo:"verb",
- b:{en:"Click, or press A–F. Each option names its move, and with hints on (H) it shows the price — green is gained, red is spent. A dice mark means it can fail; both outcomes are shown.",
-    zh:"点击，或按 A–F。每个选项都标着招式；开着提示（H），还会标出代价——绿是得，红是失。带骰子记号的可能失手，两种结果都摆在你面前。"}},
+ b:{en:"The big line is what was just said to you — the speaker's name sits above it. The small italic line under it is what the sentence is REALLY asking; you are answering that, not the words. Click or press A–F. With hints on (H) each option shows its price — green gained, red spent. A dice mark (⚄7+) means the game rolls two dice: 7 or more and it lands, less and it falls flat. Both outcomes are written out in advance, so you always know exactly what you are gambling.",
+    zh:"大字台词是此刻对你说话的人——名字就在台词上方。台词下面、选项上面那行斜体小字，是这句话真正在问你的东西；你接的是它，不是字面。点击或按 A–F。开着提示（H），每个选项标出代价——绿是得，红是失。带骰子记号（⚄7+）的选项要掷两颗骰子：加起来够 7 点才算接住，不够就是冷场。成功和失败两种结果都提前写在选项上，你赌什么、赔率多少，一目了然。"}},
 
 {t:{en:"One sentence, three hearings", zh:"一句话，三层听法"}, demo:"layers",
  b:{en:"Tab cycles the subtitle: literal, polite, what she meant. The conf badge says how sure that reading is. Under 60%, even a kind answer is a guess — and a wrong guess costs.",
@@ -2394,8 +2734,8 @@ const TUT = [
     zh:"几乎每个回答，未说 +1。到 5，它开始从侧面漏出来；到 10，决堤。有些年，决堤是这一晚唯一诚实的事。"}},
 
 {t:{en:"The table remembers", zh:"这张桌子记得"}, demo:"web",
- b:{en:"The left rail is the ledger and the web: who you owe, who is warm, whose secret you carry. Endings leave keepsakes, and keepsakes open new doors next year. Three years, three keepsakes — the Wheel opens.",
-    zh:"左侧是人情账和饭桌：你欠谁、谁还热乎、你攥着谁的秘密。结局会留下物件，物件给明年开新的门。三年，三件——轮回就开。"}}
+ b:{en:"The left rail is your two account books. LEDGER: favors given (+) and owed (−) to each person — warmth you can spend, and debts that come due at the Reckoning. THE TABLE: each relative's warmth bar and their stars — more stars, more their opinion of you moves the room; a gold dot means things are warm right now, a blue dot means you carry their secret. Endings leave keepsakes, keepsakes open new doors next year. Three years, three keepsakes — the Wheel opens.",
+    zh:"左侧是你的两本账。人情账：对每个亲戚给出的人情（+）和欠下的人情（−）——给出去的是可以花的 warmth，欠下的会在「摊账本」那晚来收。饭桌：每个亲戚对你的好感条和星星——星越多，ta 对你的态度越能带动全桌；金点表示关系正热，蓝点表示你攥着 ta 的秘密。结局会留下物件，物件给明年开新的门。三年，三件——轮回就开。"}}
 ];
 
 /* The demos are built from live game data (a real topic, real verbs, the real
@@ -2508,6 +2848,7 @@ function redrawOverlay(){
   if(RESHOW==="archive") archive();
   else if(RESHOW==="ending" && LAST_ENDING) renderEndingCard(LAST_ENDING, LAST_UNLOCKED);
   else if(RESHOW==="tut") showTut(TUT_STEP);
+  else if(RESHOW==="mind") showMindset();
   else if(RESHOW==="error"){ /* leave the error page alone */ }
   else title();
 }

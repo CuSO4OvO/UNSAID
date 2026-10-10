@@ -72,6 +72,7 @@ function playOnce(pick, meta, onStep) {
   MAIN.innerHTML = ""; MAIN._h = null; OV.innerHTML = ""; OV.style.display = "none";
   api.setMeta(meta && typeof meta === "object" ? meta : emptyMeta());
   api.startRun(false);
+  { const m0 = docStub.getElementById("mind0"); if (m0) m0.onclick(); }  // v2: mindset gate from year 2
   let n = 0;
   while (n++ < 90) {
     if (OV.innerHTML.indexOf("end-n") >= 0) break;
@@ -170,9 +171,9 @@ console.log("\n=== A4  course name is never blank ===");
 /* ================= A5 ================= */
 console.log("\n=== A5  no draw slot is silently dropped ===");
 {
-  // The schedule has exactly six draw slots. A run that reaches the last screen
-  // must therefore have shown exactly six topic cards. (Short runs are early
-  // endings — self/face hit zero — which is legitimate.)
+  // v2: the schedule has exactly FIVE draw slots (15 -> 14 decisions). A run
+  // that reaches the last screen must therefore have shown exactly five topic
+  // cards. (Short runs are early endings — self/face hit zero — legitimate.)
   let full = 0, exact = 0, wrong = [];
   const topicIds = new Set(api.TOPICS.map(t => t.id));
   for (let i = 0; i < 600; i++) {
@@ -184,12 +185,12 @@ console.log("\n=== A5  no draw slot is silently dropped ===");
     });
     if (!sawGoodbye) continue;
     full++;
-    if (cards === 6) exact++; else if (wrong.length < 3) wrong.push(cards);
+    if (cards === 5) exact++; else if (wrong.length < 3) wrong.push(cards);
   }
-  info("runs that reached the last screen: " + full + " | with exactly 6 topic cards: " + exact);
+  info("runs that reached the last screen: " + full + " | with exactly 5 topic cards: " + exact);
   if (wrong.length) info("offending counts: " + wrong.join(", "));
   ok(full > 100, "sampled " + full + " complete evenings");
-  ok(exact === full, "every complete evening drew all six topic slots");
+  ok(exact === full, "every complete evening drew all five topic slots");
 }
 
 /* ================= A6 ================= */
@@ -202,6 +203,7 @@ console.log("\n=== A6  the last screen can no longer flip the ending ===");
     MAIN.innerHTML = ""; MAIN._h = null; OV.innerHTML = ""; OV.style.display = "none";
     api.setMeta({ runs: 3, keepsakes: ["letter", "permit", "tin", "photo", "award"], endings: [], secrets: [] });
     api.startRun(false);
+    { const m0 = docStub.getElementById("mind0"); if (m0) m0.onclick(); }
     let n = 0;
     while (n++ < 90) {
       if (OV.innerHTML.indexOf("end-n") >= 0) break;

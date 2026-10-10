@@ -110,6 +110,7 @@ ok(!!documentStub.getElementById("start"), "closing the tutorial returns to the 
 
 console.log("\n=== B. START -> first decision renders ===");
 documentStub.getElementById("start").onclick();
+{ const m0 = documentStub.getElementById("mind0"); if (m0) m0.onclick(); }
 ok(OV.style.display === "none", "overlay hidden after START");
 ok(MAIN.innerHTML.indexOf('class="opt') >= 0, "options rendered into #main");
 const firstOpts = MAIN.querySelectorAll(".opt");
@@ -121,6 +122,7 @@ console.log("\n=== C. FULL EVENING (both languages, 200 runs) ===");
 function playOne() {
   MAIN.innerHTML = ""; MAIN._h = null; OV.innerHTML = ""; OV.style.display = "none";
   documentStub.getElementById("start").onclick();
+  const m0 = documentStub.getElementById("mind0"); if (m0) m0.onclick();  // v2: mindset gate from year 2
   let n = 0;
   while (n++ < 60) {
     if (OV.innerHTML.indexOf("end-n") >= 0) break;
@@ -147,6 +149,7 @@ console.log("     avg decisions per evening: " + (totalSteps / 200).toFixed(1));
 console.log("\n=== D. LANGUAGE TOGGLE (L key) mid-run ===");
 MAIN.innerHTML = ""; MAIN._h = null; OV.innerHTML = ""; OV.style.display = "none";
 documentStub.getElementById("start").onclick();
+{ const m0 = documentStub.getElementById("mind0"); if (m0) m0.onclick(); }
 const keyHandlers = [];
 sb.document.addEventListener = (t, fn) => { if (t === "keydown") keyHandlers.push(fn); };
 try { vm.runInContext(script, vm.createContext(sb), { filename: "game2.js" }); } catch (e) {}

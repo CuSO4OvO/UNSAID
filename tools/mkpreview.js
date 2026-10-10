@@ -31,6 +31,9 @@ const harness = `
   /* &tutstep=N opens the tutorial straight at page N (for screenshots) */
   var ts = /tutstep=(\\d+)/.exec(h);
   if(ts){ try{ showTut(parseInt(ts[1],10)); }catch(e){} return; }
+  /* &runs=N pretends the player has survived N years (opens the mindset gate) */
+  var vr = /runs=(\\d+)/.exec(h);
+  if(vr){ try{ META.runs = parseInt(vr[1],10); }catch(e){} }
   try{ document.getElementById(pres ? "pres" : "start").onclick(); }catch(e){}
 
   var pick = (/pick=(\w+)/.exec(h) || [])[1] || null;
